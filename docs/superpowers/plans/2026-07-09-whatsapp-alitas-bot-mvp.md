@@ -2315,7 +2315,7 @@ git commit -m "feat: add staff approve/reject command handling"
 - Consumes: `parseWebhook`, `InboundMessage` (Task 8); `Orchestrator` (Task 11); `StaffController` (Task 12); `BOT_CONFIG`, `BotConfig` (Task 11); `env` (Task 1); all tokens and impls from prior tasks.
 - Produces:
   - `@Controller() class WebhookController` with:
-    - `constructor(orchestrator: Orchestrator, staff: StaffController, @Inject(BOT_CONFIG) config: BotConfig)` — also reads `env.WHATSAPP_VERIFY_TOKEN`; holds a private `seen = new Set<string>()`.
+    - `constructor(orchestrator: Orchestrator, staff: StaffController, @Inject(BOT_CONFIG) config: BotConfig, @Inject(VERIFY_TOKEN) verifyToken: string)` — the controller does NOT import `env`; the verify token is injected (provided from `getEnv().WHATSAPP_VERIFY_TOKEN` in AppModule). Holds a private `seen = new Set<string>()`.
     - `@Get("health") health()` → `{ ok: true }`.
     - `@Get("webhook") verify(@Query() q, @Res() res)` — Meta verification handshake; echoes `hub.challenge` when the token matches, else 403.
     - `@Post("webhook") receive(@Body() body)` — parses messages; routes staff-chat messages to `StaffController`, customer messages to `Orchestrator`; dedupes by `messageId`; always returns `{ received: true }`.
@@ -2407,7 +2407,6 @@ import { parseWebhook } from "../whatsapp/webhook";
 import { Orchestrator } from "../agent/orchestrator";
 import { StaffController } from "../staff/control";
 import { BOT_CONFIG, type BotConfig } from "./botConfig";
-import { env } from "../config/env";
 
 export const VERIFY_TOKEN = Symbol("VerifyToken");
 
@@ -2419,7 +2418,7 @@ export class WebhookController {
     private orchestrator: Orchestrator,
     private staff: StaffController,
     @Inject(BOT_CONFIG) private config: BotConfig,
-    @Inject(VERIFY_TOKEN) private verifyToken: string = env.WHATSAPP_VERIFY_TOKEN,
+    @Inject(VERIFY_TOKEN) private verifyToken: string,
   ) {}
 
   @Get("health")
@@ -2459,14 +2458,14 @@ export class WebhookController {
 }
 ```
 
-Note for the test: the controller's constructor takes `verifyToken` as its 4th positional arg (the test passes it directly). In production it is provided via the `VERIFY_TOKEN` token (Step 4).
+Note for the test: the controller's constructor takes `verifyToken` as its 4th positional arg with NO default (the test passes it directly as `"verify-me"`). In production it is provided via the `VERIFY_TOKEN` token (Step 4). The controller does NOT import `env` — this keeps `webhook.controller.test.ts` free of the env module's runtime validation.
 
 - [ ] **Step 4: Write `src/app.module.ts`**
 
 ```ts
 import { Module } from "@nestjs/common";
 import { PrismaClient } from "@prisma/client";
-import { env } from "./config/env";
+import { getEnv } from "./config/env";
 import { ORDER_REPOSITORY } from "./orders/orderRepository";
 import { PrismaOrderRepository } from "./orders/prismaOrderRepository";
 import { OrderService } from "./orders/orderService";
@@ -2481,6 +2480,8 @@ import { Orchestrator } from "./agent/orchestrator";
 import { StaffController } from "./staff/control";
 import { BOT_CONFIG, type BotConfig } from "./bot/botConfig";
 import { VERIFY_TOKEN, WebhookController } from "./bot/webhook.controller";
+
+const env = getEnv();
 
 const botConfig: BotConfig = {
   staffChatId: env.STAFF_CHAT_ID,
@@ -2513,11 +2514,11 @@ export class AppModule {}
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
-import { env } from "./config/env";
+import { getEnv } from "./config/env";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
-  await app.listen(env.PORT, "0.0.0.0");
+  await app.listen(getEnv().PORT, "0.0.0.0");
 }
 
 bootstrap();
