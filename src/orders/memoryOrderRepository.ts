@@ -23,21 +23,22 @@ export class MemoryOrderRepository implements OrderRepository {
     return this.orders.get(id) ?? null;
   }
 
-  async updateStatus(id: string, status: OrderStatus, reviewedBy?: string): Promise<Order> {
+  async attachProof(id: string, proofImagePath: string): Promise<Order> {
     const order = this.mustGet(id);
-    const updated: Order = {
-      ...order,
-      status,
-      reviewedBy: reviewedBy ?? order.reviewedBy,
-      reviewedAt: new Date(),
-    };
+    const updated: Order = { ...order, proofImagePath, status: "pending_review" };
     this.orders.set(id, updated);
     return updated;
   }
 
-  async setProof(id: string, proofImagePath: string): Promise<Order> {
+  async transition(
+    id: string,
+    expectedFrom: OrderStatus,
+    to: OrderStatus,
+    reviewedBy: string,
+  ): Promise<Order | null> {
     const order = this.mustGet(id);
-    const updated: Order = { ...order, proofImagePath };
+    if (order.status !== expectedFrom) return null;
+    const updated: Order = { ...order, status: to, reviewedBy, reviewedAt: new Date() };
     this.orders.set(id, updated);
     return updated;
   }

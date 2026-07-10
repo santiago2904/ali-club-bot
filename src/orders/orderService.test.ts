@@ -56,4 +56,20 @@ describe("OrderService.attachProof and review", () => {
     const order = await svc.confirm("57300", draft(), "transfer"); // awaiting_payment
     await expect(svc.review(order.id, "approved", "cocina")).rejects.toThrow();
   });
+
+  it("reviewing the same order concurrently rejects the loser with 'already reviewed'", async () => {
+    const svc = new OrderService(new MemoryOrderRepository());
+    const order = await svc.confirm("57300", draft(), "cash");
+    // Both calls read the order (still pending_review) before either writes,
+    // simulating two staff members racing to review the same order.
+    const results = await Promise.allSettled([
+      svc.review(order.id, "approved", "cocina"),
+      svc.review(order.id, "approved", "cocina"),
+    ]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected") as PromiseRejectedResult[];
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0].reason.message).toMatch(/already reviewed/);
+  });
 });

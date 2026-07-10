@@ -15,6 +15,7 @@ import { Orchestrator } from "./agent/orchestrator";
 import { StaffController } from "./staff/control";
 import { BOT_CONFIG, type BotConfig } from "./bot/botConfig";
 import { VERIFY_TOKEN, WebhookController } from "./bot/webhook.controller";
+import { APP_SECRET, WhatsAppSignatureGuard } from "./bot/whatsappSignature.guard";
 
 const env = getEnv();
 
@@ -38,6 +39,8 @@ const botConfig: BotConfig = {
     { provide: LLM_CLIENT, useFactory: () => new AnthropicLlmClient(env.ANTHROPIC_API_KEY) },
     { provide: BOT_CONFIG, useValue: botConfig },
     { provide: VERIFY_TOKEN, useValue: env.WHATSAPP_VERIFY_TOKEN },
+    { provide: APP_SECRET, useFactory: () => env.WHATSAPP_APP_SECRET },
+    WhatsAppSignatureGuard,
   ],
 })
 export class AppModule {}

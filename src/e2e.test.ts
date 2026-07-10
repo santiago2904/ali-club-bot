@@ -62,3 +62,39 @@ describe("E2E happy path (transfer)", () => {
     expect(wa.sent.some((m) => m.to === "57300" && m.kind === "text" && m.text.includes("preparación"))).toBe(true);
   });
 });
+
+describe("E2E happy path (cash)", () => {
+  it("cash order skips awaiting_payment, no QR sent, staff approves directly", async () => {
+    const repo = new MemoryOrderRepository();
+    const orders = new OrderService(repo);
+    const wa = new FakeWhatsAppClient();
+    const config: BotConfig = {
+      staffChatId: "staff-1", qrImagePath: "/qr.png",
+      now: () => new Date(2026, 6, 9, 19, 0),
+    };
+
+    const llm = new ScriptedLlm([
+      { text: "", toolUses: [{ id: "1", name: "add_item", input: { productId: "wings_12", quantity: 1 } }], stopReason: "tool_use" },
+      { text: "", toolUses: [{ id: "2", name: "set_customer_details", input: { name: "Ana", address: "Cra 70", neighborhood: "Laureles" } }], stopReason: "tool_use" },
+      { text: "", toolUses: [{ id: "3", name: "confirm_order", input: { paymentMethod: "cash" } }], stopReason: "tool_use" },
+      { text: "Listo Ana, pago en efectivo contra entrega. 🍗", toolUses: [], stopReason: "end" },
+    ]);
+
+    const orchestrator = new Orchestrator(
+      llm, new MemorySessionStore(), orders, wa, new MemoryProofStorage(), config,
+    );
+    const staff = new StaffController(orders, wa);
+    const ctrl = new WebhookController(orchestrator, staff, config, "verify-me");
+
+    await ctrl.receive(textBody("57300", "c1", "Quiero 12 alitas para Laureles, soy Ana, Cra 70, pago en efectivo"));
+
+    const created = await repo.findById("1");
+    expect(created?.status).toBe("pending_review");
+    expect(wa.sent.every((m) => m.kind !== "image")).toBe(true);
+    expect(wa.sent.some((m) => m.to === "staff-1")).toBe(true);
+
+    await ctrl.receive(textBody("staff-1", "s1", "aprobar #1"));
+    expect((await repo.findById("1"))?.status).toBe("approved");
+    expect(wa.sent.some((m) => m.to === "57300" && m.kind === "text" && m.text.includes("preparación"))).toBe(true);
+  });
+});

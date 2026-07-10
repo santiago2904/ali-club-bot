@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runTool, type ToolContext } from "./tools";
+import { runTool, TOOL_DEFS, type ToolContext } from "./tools";
 import { MemorySessionStore } from "../sessions/sessionStore";
 import { OrderService } from "../orders/orderService";
 import { MemoryOrderRepository } from "../orders/memoryOrderRepository";
@@ -58,5 +58,20 @@ describe("runTool", () => {
     await runTool("send_qr", {}, c);
     const wa = c.whatsapp as FakeWhatsAppClient;
     expect(wa.sent.some((m) => m.kind === "image" && m.imagePath === "/qr.png")).toBe(true);
+  });
+
+  it("confirm_order resets the draft so a second order does not reuse confirmed items", async () => {
+    const c = ctx();
+    await runTool("add_item", { productId: "wings_12", quantity: 1 }, c);
+    await runTool("set_customer_details", { name: "Ana", address: "Cra 70", neighborhood: "Laureles" }, c);
+    await runTool("confirm_order", { paymentMethod: "cash" }, c);
+    expect(c.session.draft.items).toEqual([]);
+  });
+
+  it("has no approval-capable tool (only human staff can approve)", () => {
+    const names = TOOL_DEFS.map((t) => t.name);
+    for (const forbidden of ["approve_order", "confirm_payment", "approve", "mark_paid"]) {
+      expect(names).not.toContain(forbidden);
+    }
   });
 });

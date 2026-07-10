@@ -46,16 +46,25 @@ export class PrismaOrderRepository implements OrderRepository {
     return row ? toOrder(row as Row) : null;
   }
 
-  async updateStatus(id: string, status: OrderStatus, reviewedBy?: string): Promise<Order> {
+  async attachProof(id: string, proofImagePath: string): Promise<Order> {
     const row = await this.prisma.order.update({
       where: { id },
-      data: { status, reviewedBy: reviewedBy ?? undefined, reviewedAt: new Date() },
+      data: { proofImagePath, status: "pending_review" },
     });
     return toOrder(row as Row);
   }
 
-  async setProof(id: string, proofImagePath: string): Promise<Order> {
-    const row = await this.prisma.order.update({ where: { id }, data: { proofImagePath } });
-    return toOrder(row as Row);
+  async transition(
+    id: string,
+    expectedFrom: OrderStatus,
+    to: OrderStatus,
+    reviewedBy: string,
+  ): Promise<Order | null> {
+    const res = await this.prisma.order.updateMany({
+      where: { id, status: expectedFrom },
+      data: { status: to, reviewedBy, reviewedAt: new Date() },
+    });
+    if (res.count === 0) return null;
+    return this.findById(id);
   }
 }

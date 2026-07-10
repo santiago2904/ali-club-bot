@@ -10,6 +10,7 @@ const schema = z.object({
   PROOF_DIR: z.string().min(1),
   QR_IMAGE_PATH: z.string().min(1),
   PORT: z.coerce.number().int().positive(),
+  WHATSAPP_APP_SECRET: z.string().min(1),
 });
 
 export type Env = z.infer<typeof schema>;

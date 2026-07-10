@@ -24,14 +24,23 @@ describe("MemoryOrderRepository", () => {
     expect((await repo.findById("1"))?.customerName).toBe("Ana");
   });
 
-  it("updates status with reviewer and timestamp, and stores proof", async () => {
+  it("attaches proof and moves to pending_review, then transitions to approved", async () => {
     const repo = new MemoryOrderRepository();
     await repo.create(input);
-    await repo.setProof("1", "/proofs/1.jpg");
-    const reviewed = await repo.updateStatus("1", "approved", "cocina");
-    expect(reviewed.status).toBe("approved");
-    expect(reviewed.reviewedBy).toBe("cocina");
-    expect(reviewed.reviewedAt).toBeInstanceOf(Date);
-    expect(reviewed.proofImagePath).toBe("/proofs/1.jpg");
+    const withProof = await repo.attachProof("1", "/proofs/1.jpg");
+    expect(withProof.status).toBe("pending_review");
+    expect(withProof.proofImagePath).toBe("/proofs/1.jpg");
+
+    const reviewed = await repo.transition("1", "pending_review", "approved", "cocina");
+    expect(reviewed?.status).toBe("approved");
+    expect(reviewed?.reviewedBy).toBe("cocina");
+    expect(reviewed?.reviewedAt).toBeInstanceOf(Date);
+  });
+
+  it("transition returns null when the order is no longer in expectedFrom", async () => {
+    const repo = new MemoryOrderRepository();
+    await repo.create(input); // status: awaiting_payment (per fixture)
+    const result = await repo.transition("1", "building", "approved", "x");
+    expect(result).toBeNull();
   });
 });

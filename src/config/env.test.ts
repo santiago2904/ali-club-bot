@@ -6,6 +6,7 @@ const full = {
   WHATSAPP_PHONE_NUMBER_ID: "p", WHATSAPP_VERIFY_TOKEN: "v",
   STAFF_CHAT_ID: "s", PROOF_DIR: "./data/proofs",
   QR_IMAGE_PATH: "./assets/payment-qr.png", PORT: "3000",
+  WHATSAPP_APP_SECRET: "s2",
 };
 
 describe("loadEnv", () => {

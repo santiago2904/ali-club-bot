@@ -3,7 +3,7 @@ import { validateZone } from "../config/zones";
 import type { OrderService } from "../orders/orderService";
 import type { Session, SessionStore } from "../sessions/sessionStore";
 import type { WhatsAppClient } from "../whatsapp/client";
-import { calcSubtotalCop, calcTotalCop, type PaymentMethod } from "../domain/order";
+import { calcSubtotalCop, calcTotalCop, emptyDraft, type PaymentMethod } from "../domain/order";
 
 export interface ToolContext {
   session: Session;
@@ -113,6 +113,8 @@ export async function runTool(
 
       const method = input.paymentMethod as PaymentMethod;
       const order = await ctx.orders.confirm(ctx.session.phone, draft, method);
+      ctx.session.draft = emptyDraft();
+      ctx.store.save(ctx.session);
       const total = cop(order.totalCop);
       if (method === "transfer") {
         return {

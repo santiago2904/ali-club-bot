@@ -18,6 +18,12 @@ export interface CreateOrderInput {
 export interface OrderRepository {
   create(input: CreateOrderInput): Promise<Order>;
   findById(id: string): Promise<Order | null>;
-  updateStatus(id: string, status: OrderStatus, reviewedBy?: string): Promise<Order>;
-  setProof(id: string, proofImagePath: string): Promise<Order>;
+  /** Atomically stores the proof AND moves the order to pending_review. */
+  attachProof(id: string, proofImagePath: string): Promise<Order>;
+  /**
+   * Conditionally transitions the order from `expectedFrom` to `to` in a single
+   * atomic write. Returns the updated order, or null if the order was no longer
+   * in `expectedFrom` (i.e. someone else already transitioned it — race lost).
+   */
+  transition(id: string, expectedFrom: OrderStatus, to: OrderStatus, reviewedBy: string): Promise<Order | null>;
 }

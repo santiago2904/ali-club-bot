@@ -39,8 +39,7 @@ export class OrderService {
     if (!canTransition(order.status, "pending_review")) {
       throw new Error(`Cannot attach proof from ${order.status}`);
     }
-    await this.repo.setProof(orderId, proofImagePath);
-    return this.repo.updateStatus(orderId, "pending_review");
+    return this.repo.attachProof(orderId, proofImagePath);
   }
 
   async review(
@@ -52,7 +51,9 @@ export class OrderService {
     if (!canTransition(order.status, decision)) {
       throw new Error(`Cannot ${decision} from ${order.status}`);
     }
-    return this.repo.updateStatus(orderId, decision, reviewedBy);
+    const updated = await this.repo.transition(orderId, order.status, decision, reviewedBy);
+    if (!updated) throw new Error(`Order ${orderId} already reviewed`);
+    return updated;
   }
 
   getById(orderId: string): Promise<Order | null> {
