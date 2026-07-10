@@ -23,7 +23,7 @@ transferencia pendiente de verificación humana.
 |---|---|
 | Canal de WhatsApp | **WhatsApp Cloud API oficial** de Meta. Prerrequisito no-code: crear cuenta Meta Business + verificar un número (hoy solo tienen la app de WhatsApp Business). |
 | Enfoque de la conversación | **Agente IA con herramientas (function calling)** usando Claude. Las herramientas son la única fuente de verdad (precios, zonas, estados). |
-| Implementación | **Código propio en Node.js + TypeScript** (una sola base que crece hasta el panel web). |
+| Implementación | **Código propio en Node.js + TypeScript con NestJS + Express** (una sola base que crece hasta el panel web). |
 | Menú | **Simple**: porciones de alitas, papas, bebidas, con precios fijos. |
 | Cobertura de domicilios | **Validación por barrio/zona**, con costo de domicilio por zona. |
 | Métodos de pago | **Transferencia (QR fijo + comprobante)** y **efectivo contra entrega**. |
@@ -32,9 +32,9 @@ transferencia pendiente de verificación humana.
 
 ## Arquitectura
 
-**Stack:** Node.js + TypeScript, servidor webhook (Fastify), Anthropic API (Claude)
-como cerebro, base de datos para pedidos (Postgres; SQLite aceptable para arrancar),
-y almacenamiento de imágenes de comprobantes.
+**Stack:** Node.js + TypeScript, **NestJS + Express** para el servidor/webhook (con
+su inyección de dependencias), Anthropic API (Claude) como cerebro, PostgreSQL para
+pedidos, y almacenamiento local de imágenes de comprobantes (detrás de una interfaz).
 
 **Componentes:**
 
