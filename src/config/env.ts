@@ -18,4 +18,12 @@ export function loadEnv(raw: Record<string, string | undefined>): Env {
   return schema.parse(raw);
 }
 
-export const env: Env = loadEnv(process.env);
+// Lazily loaded + cached so importing this module never validates process.env
+// at import time (which would throw during tests where env vars are absent).
+// Production consumers call getEnv() at runtime, after process.env is populated.
+let cachedEnv: Env | undefined;
+
+export function getEnv(): Env {
+  if (!cachedEnv) cachedEnv = loadEnv(process.env);
+  return cachedEnv;
+}
