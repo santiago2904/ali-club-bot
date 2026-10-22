@@ -12,9 +12,9 @@ export class WhatsAppSignatureGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest<Request & { rawBody?: Buffer }>();
-    const header = req.header("x-hub-signature-256");
-    if (!header || !header.startsWith("sha256=")) {
-      this.logger.warn("Rejected webhook: missing X-Hub-Signature-256");
+    const header = req.header("x-webhook-signature");
+    if (!header) {
+      this.logger.warn("Rejected webhook: missing X-Webhook-Signature");
       return false;
     }
     const raw = req.rawBody;
@@ -22,7 +22,7 @@ export class WhatsAppSignatureGuard implements CanActivate {
       this.logger.error("Rejected webhook: raw body unavailable (enable rawBody in bootstrap)");
       return false;
     }
-    const expected = "sha256=" + createHmac("sha256", this.appSecret).update(raw).digest("hex");
+    const expected = createHmac("sha256", this.appSecret).update(raw).digest("hex");
     const received = Buffer.from(header);
     const computed = Buffer.from(expected);
     if (received.length !== computed.length) return false;

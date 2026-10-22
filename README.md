@@ -5,7 +5,7 @@ Bot de WhatsApp para tomar pedidos de alitas BBQ (MVP). NestJS + Express.
 ## Requisitos
 - Node.js ≥ 20
 - PostgreSQL en ejecución
-- Credenciales de WhatsApp Cloud API y una API key de Anthropic
+- Un proyecto Kapso con un número de WhatsApp conectado (`KAPSO_API_KEY`) y una API key de Anthropic
 
 ## Setup
 1. `cp .env.example .env` y completa las variables.
@@ -18,7 +18,7 @@ Bot de WhatsApp para tomar pedidos de alitas BBQ (MVP). NestJS + Express.
 - `npm test` — corre toda la suite (unitaria + E2E con fakes).
 
 ## Verificación manual (E2E real)
-1. Expón el servidor con un túnel (`cloudflared` / `ngrok`) y configura el webhook en Meta apuntando a `/webhook` con `WHATSAPP_VERIFY_TOKEN`.
+1. Expón el servidor con un túnel (`cloudflared` / `ngrok`) y registra el webhook en Kapso (`kind: "meta"`) apuntando a `https://<tu-tunel>/webhook`, con un `secret_key` que copiarás a `KAPSO_WEBHOOK_SECRET`.
 2. Desde un número de prueba, escribe "hola" → el bot debe saludar y ofrecer el menú.
 3. Pide productos, da nombre/dirección/barrio cubierto → confirma pedido por transferencia.
 4. Verifica que llega el QR; envía una foto como comprobante.
@@ -31,8 +31,8 @@ Bot de WhatsApp para tomar pedidos de alitas BBQ (MVP). NestJS + Express.
 
 These block live testing but not development (fakes cover it):
 
-1. Meta Business account for the business.
-2. Verify a phone number for WhatsApp Cloud API; obtain `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, set a `WHATSAPP_VERIFY_TOKEN`.
+1. Kapso project with a connected WhatsApp number (blocked on Meta business verification as of now).
+2. Once connected, obtain `KAPSO_API_KEY`, `WHATSAPP_PHONE_NUMBER_ID`; register the phone's webhook in Kapso (`kind: "meta"`) with a `secret_key` → `KAPSO_WEBHOOK_SECRET`.
 3. Payment account + fixed QR image at `assets/payment-qr.png` (`QR_IMAGE_PATH`).
 4. Real menu items/prices → update `src/config/menu.ts`.
 5. Real covered neighborhoods + delivery fees → update `src/config/zones.ts`.

@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import { loadEnv } from "./env";
 
 const full = {
-  ANTHROPIC_API_KEY: "k", DATABASE_URL: "d", WHATSAPP_TOKEN: "t",
+  ANTHROPIC_API_KEY: "k", DATABASE_URL: "d", KAPSO_API_KEY: "t",
   WHATSAPP_PHONE_NUMBER_ID: "p", WHATSAPP_VERIFY_TOKEN: "v",
   STAFF_CHAT_ID: "s", PROOF_DIR: "./data/proofs",
   QR_IMAGE_PATH: "./assets/payment-qr.png", PORT: "3000",
-  WHATSAPP_APP_SECRET: "s2",
+  KAPSO_WEBHOOK_SECRET: "s2",
 };
 
 describe("loadEnv", () => {

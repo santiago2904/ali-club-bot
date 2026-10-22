@@ -8,7 +8,7 @@ import { SESSION_STORE, MemorySessionStore } from "./sessions/sessionStore";
 import { PROOF_STORAGE } from "./storage/proofStorage";
 import { LocalProofStorage } from "./storage/localProofStorage";
 import { WHATSAPP_CLIENT } from "./whatsapp/client";
-import { CloudApiWhatsAppClient } from "./whatsapp/cloudApiClient";
+import { KapsoWhatsAppClient } from "./whatsapp/kapsoClient";
 import { LLM_CLIENT } from "./agent/llmClient";
 import { AnthropicLlmClient } from "./agent/anthropicLlmClient";
 import { Orchestrator } from "./agent/orchestrator";
@@ -35,11 +35,11 @@ const botConfig: BotConfig = {
     { provide: ORDER_REPOSITORY, useClass: PrismaOrderRepository },
     { provide: SESSION_STORE, useClass: MemorySessionStore },
     { provide: PROOF_STORAGE, useFactory: () => new LocalProofStorage(env.PROOF_DIR) },
-    { provide: WHATSAPP_CLIENT, useFactory: () => new CloudApiWhatsAppClient(env.WHATSAPP_TOKEN, env.WHATSAPP_PHONE_NUMBER_ID) },
+    { provide: WHATSAPP_CLIENT, useFactory: () => new KapsoWhatsAppClient(env.KAPSO_API_KEY, env.WHATSAPP_PHONE_NUMBER_ID) },
     { provide: LLM_CLIENT, useFactory: () => new AnthropicLlmClient(env.ANTHROPIC_API_KEY) },
     { provide: BOT_CONFIG, useValue: botConfig },
     { provide: VERIFY_TOKEN, useValue: env.WHATSAPP_VERIFY_TOKEN },
-    { provide: APP_SECRET, useFactory: () => env.WHATSAPP_APP_SECRET },
+    { provide: APP_SECRET, useFactory: () => env.KAPSO_WEBHOOK_SECRET },
     WhatsAppSignatureGuard,
   ],
 })

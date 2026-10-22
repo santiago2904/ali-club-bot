@@ -8,13 +8,13 @@ function ctx(rawBody: Buffer | undefined, header: string | undefined) {
   const req = {
     rawBody,
     header: (name: string) =>
-      name.toLowerCase() === "x-hub-signature-256" ? header : undefined,
+      name.toLowerCase() === "x-webhook-signature" ? header : undefined,
   };
   return { switchToHttp: () => ({ getRequest: () => req }) } as any;
 }
 
 function sign(body: Buffer): string {
-  return "sha256=" + createHmac("sha256", SECRET).update(body).digest("hex");
+  return createHmac("sha256", SECRET).update(body).digest("hex");
 }
 
 describe("WhatsAppSignatureGuard", () => {
@@ -26,7 +26,7 @@ describe("WhatsAppSignatureGuard", () => {
   });
 
   it("rejects a wrong signature", () => {
-    expect(guard.canActivate(ctx(body, "sha256=deadbeef"))).toBe(false);
+    expect(guard.canActivate(ctx(body, "deadbeef"))).toBe(false);
   });
 
   it("rejects when the signature header is missing", () => {
