@@ -47,6 +47,10 @@ export class WebhookController {
           if (msg.kind === "text") await this.staff.handle(msg.text, msg.from);
           continue;
         }
+        if (this.config.allowedSenders !== "*" && !this.config.allowedSenders.includes(msg.from)) {
+          this.logger.log(`Ignoring message ${msg.messageId} from sender outside ALLOWED_SENDERS`);
+          continue;
+        }
         if (msg.kind === "text") await this.orchestrator.handleText(msg.from, msg.text);
         else await this.orchestrator.handleImage(msg.from, msg.mediaId);
       } catch (err) {

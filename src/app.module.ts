@@ -22,6 +22,7 @@ const env = getEnv();
 const botConfig: BotConfig = {
   staffChatId: env.STAFF_CHAT_ID,
   qrImagePath: env.QR_IMAGE_PATH,
+  allowedSenders: env.ALLOWED_SENDERS,
   now: () => new Date(),
 };
 

@@ -30,6 +30,7 @@ describe("E2E happy path (transfer)", () => {
     const orders = new OrderService(repo);
     const wa = new FakeWhatsAppClient();
     const config: BotConfig = {
+      allowedSenders: "*",
       staffChatId: "staff-1", qrImagePath: "/qr.png",
       now: () => new Date(2026, 6, 9, 19, 0),
     };
@@ -69,6 +70,7 @@ describe("E2E happy path (cash)", () => {
     const orders = new OrderService(repo);
     const wa = new FakeWhatsAppClient();
     const config: BotConfig = {
+      allowedSenders: "*",
       staffChatId: "staff-1", qrImagePath: "/qr.png",
       now: () => new Date(2026, 6, 9, 19, 0),
     };

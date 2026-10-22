@@ -11,6 +11,12 @@ const schema = z.object({
   QR_IMAGE_PATH: z.string().min(1),
   PORT: z.coerce.number().int().positive(),
   KAPSO_WEBHOOK_SECRET: z.string().min(1),
+  // Comma-separated customer numbers the bot may answer, or "*" for everyone.
+  ALLOWED_SENDERS: z
+    .string()
+    .trim()
+    .min(1)
+    .transform((v): "*" | string[] => (v === "*" ? "*" : v.split(",").map((n) => n.trim()).filter(Boolean))),
 });
 
 export type Env = z.infer<typeof schema>;

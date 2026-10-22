@@ -23,6 +23,7 @@ function build(llm: LlmClient, repo = new MemoryOrderRepository()) {
   const whatsapp = new FakeWhatsAppClient();
   const storage = new MemoryProofStorage();
   const config: BotConfig = {
+    allowedSenders: "*",
     staffChatId: "staff-1",
     qrImagePath: "/qr.png",
     now: () => new Date(2026, 6, 9, 19, 0), // open hours
@@ -49,6 +50,7 @@ describe("Orchestrator.handleText", () => {
     const orders = new OrderService(new MemoryOrderRepository());
     const whatsapp = new FakeWhatsAppClient();
     const config: BotConfig = {
+      allowedSenders: "*",
       staffChatId: "staff-1", qrImagePath: "/qr.png",
       now: () => new Date(2026, 6, 9, 4, 0), // closed
     };
