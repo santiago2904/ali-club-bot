@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { WhatsAppClient as KapsoSdkClient } from "@kapso/whatsapp-cloud-api";
 import type { WhatsAppClient } from "./client";
 
-const KAPSO_BASE_URL = "https://app.kapso.ai/api/meta/";
+const KAPSO_BASE_URL = "https://api.kapso.ai/meta/whatsapp";
 
 export class KapsoWhatsAppClient implements WhatsAppClient {
   private sdk: KapsoSdkClient;
