@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { describeReceipt } from "./receiptChecker";
+import { cleanField, describeReceipt } from "./receiptChecker";
 
 const base = { isPaymentReceipt: true, bank: "Bancolombia", date: "4 nov 2026", reference: "123" };
 
@@ -22,5 +22,14 @@ describe("describeReceipt", () => {
 
   it("always reminds staff to verify in the bank", () => {
     expect(describeReceipt({ ...base, amountCop: 37000 }, 37000)).toContain("Verifica en el banco");
+  });
+});
+
+describe("cleanField", () => {
+  it("drops placeholder values the model writes instead of null", () => {
+    for (const v of ["UNKNOWN", "unknown", "N/A", "", "  ", null, undefined, "Desconocido"]) {
+      expect(cleanField(v)).toBeNull();
+    }
+    expect(cleanField(" Bancolombia ")).toBe("Bancolombia");
   });
 });

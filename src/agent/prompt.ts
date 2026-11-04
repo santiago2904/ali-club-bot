@@ -36,6 +36,10 @@ export function buildSystemPrompt(): string {
     "  'melo', 'de una', 'listo', 'hágale', 'dele', 'sisas', 'ok', 'bacano', 'chimba' = sí / de acuerdo;",
     "  'nada', 'ni por el putas', 'nones' = no; 'luca(s)' = mil pesos (40 lucas = $40.000); 'parce', 'pues', 've' = muletillas.",
     "  Si una respuesta corta afirma algo, tómala como sí y avanza. Habla natural y cercano, sin exagerar el parlache.",
+    "- El saludo inicial lo envía el sistema: no saludes, ve directo a ayudar.",
+    "- Nunca le digas al cliente el número interno del pedido; eso es solo para el local.",
+    "- Los mensajes que empiezan por [Nota de voz transcrita] vienen de un audio y pueden tener errores de",
+    "  transcripción; si algo importante no es claro (productos, cantidades, dirección), pregunta.",
     "- No pidas datos que ya tienes. Sé eficiente en hora pico.",
   ].join("\n");
 }

@@ -55,6 +55,26 @@ describe("parseWebhook", () => {
     expect(msg).toEqual({ from: "573001112233", messageId: "wamid.5", kind: "button", payload: "proof:12" });
   });
 
+  it("attaches the WhatsApp profile name to text messages", () => {
+    const [msg] = parseWebhook({
+      entry: [{ changes: [{ value: {
+        contacts: [{ wa_id: "573001112233", profile: { name: "Santiago" } }],
+        messages: [{ from: "573001112233", id: "wamid.6", type: "text", text: { body: "hola" } }],
+      } }] }],
+    });
+    expect(msg).toEqual({ from: "573001112233", messageId: "wamid.6", kind: "text", text: "hola", profileName: "Santiago" });
+  });
+
+  it("parses a voice note with the profile name", () => {
+    const [msg] = parseWebhook({
+      entry: [{ changes: [{ value: {
+        contacts: [{ wa_id: "573001112233", profile: { name: "Ana" } }],
+        messages: [{ from: "573001112233", id: "wamid.7", type: "audio", audio: { id: "a1", voice: true } }],
+      } }] }],
+    });
+    expect(msg).toEqual({ from: "573001112233", messageId: "wamid.7", kind: "audio", profileName: "Ana" });
+  });
+
   it("returns empty array for status-only or malformed payloads", () => {
     expect(parseWebhook({ entry: [{ changes: [{ value: { statuses: [] } }] }] })).toEqual([]);
     expect(parseWebhook({})).toEqual([]);

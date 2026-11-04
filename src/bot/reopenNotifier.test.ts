@@ -10,7 +10,7 @@ const CLOSED = new Date(2026, 6, 9, 4, 0);
 function setup(now: Date) {
   const contacts = new MemoryClosedHoursContacts();
   const wa = new FakeWhatsAppClient();
-  const config: BotConfig = { allowedSenders: "*", staffChatId: "staff-1", qrImagePath: "/qr.png", now: () => now };
+  const config: BotConfig = { allowedSenders: "*", staffChatIds: ["staff-1"], qrImagePath: "/qr.png", now: () => now };
   return { contacts, wa, notifier: new ReopenNotifier(contacts, wa, config) };
 }
 

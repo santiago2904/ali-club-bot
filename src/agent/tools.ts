@@ -9,7 +9,6 @@ export interface ToolContext {
   store: SessionStore;
   orders: OrderService;
   whatsapp: WhatsAppClient;
-  staffChatId: string;
   qrImagePath: string;
 }
 
@@ -118,12 +117,12 @@ export async function runTool(
       const total = cop(order.totalCop);
       if (method === "transfer") {
         return {
-          result: `Pedido #${order.id} creado por ${total}. Pago por transferencia: envía el QR y pide el comprobante.`,
+          result: `Pedido creado por ${total}. Pago por transferencia: envía el QR (send_qr).`,
           confirmedOrderId: order.id,
         };
       }
       return {
-        result: `Pedido #${order.id} creado por ${total}. Pago en efectivo contra entrega. Queda pendiente de confirmación del local.`,
+        result: `Pedido creado por ${total}. Pago en efectivo contra entrega. Queda pendiente de confirmación del local.`,
         confirmedOrderId: order.id,
       };
     }
@@ -147,10 +146,13 @@ export async function runTool(
     }
 
     case "send_qr": {
+      // The turn ends after this tool, so the caption carries the order number and amount.
+      const order = ctx.session.lastOrderId ? await ctx.orders.getById(ctx.session.lastOrderId) : null;
+      const head = order ? `Total a pagar: ${cop(order.totalCop)}. ` : "";
       await ctx.whatsapp.sendImage(
         ctx.session.phone,
         ctx.qrImagePath,
-        "Escanea este QR para pagar por transferencia y envíanos la foto del comprobante.",
+        `${head}Escanea este QR para pagar por transferencia y envíanos la foto del comprobante.`,
       );
       return { result: "QR de pago enviado al cliente." };
     }

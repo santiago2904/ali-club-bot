@@ -35,7 +35,7 @@ describe("E2E happy path (transfer)", () => {
     const wa = new FakeWhatsAppClient();
     const config: BotConfig = {
       allowedSenders: "*",
-      staffChatId: "staff-1", qrImagePath: "/qr.png",
+      staffChatIds: ["staff-1"], qrImagePath: "/qr.png",
       now: () => new Date(2026, 6, 9, 19, 0),
     };
 
@@ -43,10 +43,8 @@ describe("E2E happy path (transfer)", () => {
       { text: "", toolUses: [{ id: "1", name: "add_item", input: { productId: "alitas_8", quantity: 1 } }], stopReason: "tool_use" },
       { text: "", toolUses: [{ id: "2", name: "set_customer_details", input: { name: "Ana", address: "Cra 70", neighborhood: "Laureles" } }], stopReason: "tool_use" },
       { text: "", toolUses: [{ id: "2b", name: "request_location", input: {} }], stopReason: "tool_use" },
-      { text: "Compárteme tu ubicación 📍", toolUses: [], stopReason: "end" },
       { text: "", toolUses: [{ id: "3", name: "confirm_order", input: { paymentMethod: "transfer" } }], stopReason: "tool_use" },
       { text: "", toolUses: [{ id: "4", name: "send_qr", input: {} }], stopReason: "tool_use" },
-      { text: "Listo Ana, escanea el QR y envíame el comprobante. 🍗", toolUses: [], stopReason: "end" },
     ]);
 
     const orchestrator = new Orchestrator(
@@ -57,9 +55,12 @@ describe("E2E happy path (transfer)", () => {
 
     await ctrl.receive(textBody("57300", "c1", "Quiero 8 alitas, soy Ana, Cra 70, pago por transferencia"));
     expect(wa.sent.some((m) => m.kind === "location_request")).toBe(true);
-    await ctrl.receive(locationBody("57300", "c1b"));
+    await ctrl.receive(locationBody("57300", "c1b")); // quoted without the LLM
+    expect(wa.sent.some((m) => m.kind === "text" && m.text.includes("Domicilio: $4.000"))).toBe(true);
+    await ctrl.receive(textBody("57300", "c1c", "transferencia"));
     const created = await repo.findById("1");
     expect(created?.status).toBe("awaiting_payment");
+    expect(wa.sent.some((m) => m.kind === "image" && m.caption?.startsWith("Total a pagar: $22.000"))).toBe(true);
     expect(wa.sent.some((m) => m.kind === "image" && m.imagePath === "/qr.png")).toBe(true);
 
     await ctrl.receive(imageBody("57300", "c2", "media-9"));
@@ -79,7 +80,7 @@ describe("E2E happy path (cash)", () => {
     const wa = new FakeWhatsAppClient();
     const config: BotConfig = {
       allowedSenders: "*",
-      staffChatId: "staff-1", qrImagePath: "/qr.png",
+      staffChatIds: ["staff-1"], qrImagePath: "/qr.png",
       now: () => new Date(2026, 6, 9, 19, 0),
     };
 
@@ -87,7 +88,6 @@ describe("E2E happy path (cash)", () => {
       { text: "", toolUses: [{ id: "1", name: "add_item", input: { productId: "alitas_8", quantity: 1 } }], stopReason: "tool_use" },
       { text: "", toolUses: [{ id: "2", name: "set_customer_details", input: { name: "Ana", address: "Cra 70", neighborhood: "Laureles" } }], stopReason: "tool_use" },
       { text: "", toolUses: [{ id: "2b", name: "request_location", input: {} }], stopReason: "tool_use" },
-      { text: "Compárteme tu ubicación 📍", toolUses: [], stopReason: "end" },
       { text: "", toolUses: [{ id: "3", name: "confirm_order", input: { paymentMethod: "cash" } }], stopReason: "tool_use" },
       { text: "Listo Ana, pago en efectivo contra entrega. 🍗", toolUses: [], stopReason: "end" },
     ]);
@@ -100,6 +100,7 @@ describe("E2E happy path (cash)", () => {
 
     await ctrl.receive(textBody("57300", "c1", "Quiero 8 alitas, soy Ana, Cra 70, pago en efectivo"));
     await ctrl.receive(locationBody("57300", "c1b"));
+    await ctrl.receive(textBody("57300", "c1c", "efectivo"));
 
     const created = await repo.findById("1");
     expect(created?.status).toBe("pending_review");

@@ -9,6 +9,7 @@ export class MemoryOrderRepository implements OrderRepository {
     const id = String(++this.seq);
     const order: Order = {
       id,
+      number: this.seq,
       ...input,
       proofImagePath: null,
       proofCheck: null,
@@ -22,6 +23,10 @@ export class MemoryOrderRepository implements OrderRepository {
 
   async findById(id: string): Promise<Order | null> {
     return this.orders.get(id) ?? null;
+  }
+
+  async findByNumber(number: number): Promise<Order | null> {
+    return [...this.orders.values()].find((o) => o.number === number) ?? null;
   }
 
   async attachProof(id: string, proofImagePath: string, proofCheck: string | null): Promise<Order> {

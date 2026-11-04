@@ -34,4 +34,8 @@ describe("loadEnv", () => {
     expect(() => loadEnv(partial)).toThrow();
     expect(() => loadEnv({ ...full, ALLOWED_SENDERS: " " })).toThrow();
   });
+
+  it("parses STAFF_CHAT_ID as a comma-separated list", () => {
+    expect(loadEnv({ ...full, STAFF_CHAT_ID: "573243174118, 573145051793" }).STAFF_CHAT_ID).toEqual(["573243174118", "573145051793"]);
+  });
 });

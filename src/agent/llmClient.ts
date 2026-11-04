@@ -12,6 +12,8 @@ export interface LlmResponse {
   text: string;
   toolUses: LlmToolUse[];
   stopReason: "tool_use" | "end";
+  /** Assistant content exactly as returned (incl. thinking blocks), to append to history unchanged. */
+  raw?: unknown[];
 }
 
 export interface LlmClient {

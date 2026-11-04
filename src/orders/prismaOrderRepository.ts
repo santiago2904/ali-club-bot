@@ -4,7 +4,7 @@ import type { Order, OrderItem, OrderStatus, PaymentMethod } from "../domain/ord
 import type { CreateOrderInput, OrderRepository } from "./orderRepository";
 
 type Row = {
-  id: string; customerPhone: string; customerName: string; items: unknown;
+  id: string; number: number; customerPhone: string; customerName: string; items: unknown;
   deliveryAddress: string; zone: string; deliveryLat: number | null; deliveryLng: number | null; deliveryFeeCop: number; subtotalCop: number;
   totalCop: number; paymentMethod: string; proofImagePath: string | null; proofCheck: string | null; status: string;
   createdAt: Date; reviewedBy: string | null; reviewedAt: Date | null;
@@ -13,6 +13,7 @@ type Row = {
 function toOrder(row: Row): Order {
   return {
     id: row.id,
+    number: row.number,
     customerPhone: row.customerPhone,
     customerName: row.customerName,
     items: row.items as OrderItem[],
@@ -46,6 +47,11 @@ export class PrismaOrderRepository implements OrderRepository {
 
   async findById(id: string): Promise<Order | null> {
     const row = await this.prisma.order.findUnique({ where: { id } });
+    return row ? toOrder(row as Row) : null;
+  }
+
+  async findByNumber(number: number): Promise<Order | null> {
+    const row = await this.prisma.order.findUnique({ where: { number } });
     return row ? toOrder(row as Row) : null;
   }
 

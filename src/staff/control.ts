@@ -6,19 +6,18 @@ import { WHATSAPP_CLIENT, type WhatsAppClient } from "../whatsapp/client";
 
 export interface StaffCommand {
   action: "approve" | "reject";
-  orderId: string;
+  orderNumber: number;
   reason?: string;
 }
 
-const RE = /^(aprobar|rechazar)\s+#?(\w+)\s*(.*)$/i;
+const RE = /^(aprobar|rechazar)\s+#?(\d+)\s*(.*)$/i;
 
 export function parseStaffCommand(text: string): StaffCommand | null {
   const m = RE.exec(text.trim());
   if (!m) return null;
   const action = m[1].toLowerCase() === "aprobar" ? "approve" : "reject";
-  const orderId = m[2];
   const reason = m[3].trim();
-  return { action, orderId, ...(reason ? { reason } : {}) };
+  return { action, orderNumber: Number(m[2]), ...(reason ? { reason } : {}) };
 }
 
 @Injectable()
@@ -29,19 +28,19 @@ export class StaffController {
     @Optional() @Inject(BOT_CONFIG) private config?: BotConfig,
   ) {}
 
-  /** Quick-reply buttons from the staff template: "proof:<id>" or "approve:<id>". */
+  /** Quick-reply buttons from the staff template: "proof:<number>" or "approve:<number>". */
   async handleButton(payload: string, reviewedBy: string): Promise<void> {
-    const [action, orderId] = payload.split(":");
+    const [action, num] = payload.split(":");
     if (action === "approve") {
-      await this.handle(`aprobar #${orderId}`, reviewedBy);
+      await this.handle(`aprobar #${num}`, reviewedBy);
       return;
     }
     if (action === "proof") {
-      const order = await this.orders.getById(orderId);
+      const order = await this.orders.getByNumber(Number(num));
       if (order?.proofImagePath) {
-        await this.whatsapp.sendImage(reviewedBy, order.proofImagePath, `Comprobante #${order.id}. ${order.proofCheck ?? ""}`.trim());
+        await this.whatsapp.sendImage(reviewedBy, order.proofImagePath, `Comprobante #${order.number}. ${order.proofCheck ?? ""}`.trim());
       } else {
-        await this.whatsapp.sendText(reviewedBy, `El pedido #${orderId} no tiene comprobante (pago en efectivo o aún no lo envían).`);
+        await this.whatsapp.sendText(reviewedBy, `El pedido #${num} no tiene comprobante (pago en efectivo o aún no lo envían).`);
       }
     }
   }
@@ -50,24 +49,38 @@ export class StaffController {
     const cmd = parseStaffCommand(text);
     if (!cmd) return false;
 
+    const found = await this.orders.getByNumber(cmd.orderNumber);
+    if (!found) {
+      await this.whatsapp.sendText(reviewedBy, `No encontré el pedido #${cmd.orderNumber}.`);
+      return true;
+    }
+
+    let order: Order;
+    try {
+      order = await this.orders.review(found.id, cmd.action === "approve" ? "approved" : "rejected", reviewedBy);
+    } catch {
+      // e.g. already reviewed, or still waiting for the payment proof.
+      await this.whatsapp.sendText(reviewedBy, `El pedido #${found.number} no se puede ${cmd.action === "approve" ? "aprobar" : "rechazar"} (estado: ${found.status}).`);
+      return true;
+    }
+
     if (cmd.action === "approve") {
-      const order = await this.orders.review(cmd.orderId, "approved", reviewedBy);
       await this.whatsapp.sendText(
         order.customerPhone,
-        `¡Buenas noticias! Tu pedido #${order.id} fue confirmado y ya está en preparación. 🍗 Pronto llega a ${order.deliveryAddress}.`,
+        `¡Buenas noticias! Tu pedido fue confirmado y ya está en preparación. 🍗 Pronto llega a ${order.deliveryAddress}.`,
       );
       const courierNotified = await this.notifyCourier(order);
       await this.whatsapp.sendText(
         reviewedBy,
-        `✅ Pedido #${order.id} aprobado.${courierNotified ? " Ya se le avisó al domiciliario." : ""}`,
+        `✅ Pedido #${order.number} aprobado.${courierNotified ? " Ya se le avisó al domiciliario." : ""}`,
       );
     } else {
-      const order = await this.orders.review(cmd.orderId, "rejected", reviewedBy);
       const reason = cmd.reason ? ` Motivo: ${cmd.reason}.` : "";
       await this.whatsapp.sendText(
         order.customerPhone,
-        `Lo sentimos, tu pedido #${order.id} no pudo confirmarse.${reason} Si crees que es un error, escríbenos.`,
+        `Lo sentimos, tu pedido no pudo confirmarse.${reason} Si crees que es un error, escríbenos.`,
       );
+      await this.whatsapp.sendText(reviewedBy, `❌ Pedido #${order.number} rechazado. Ya se le avisó al cliente.`);
     }
     return true;
   }
@@ -82,7 +95,7 @@ export class StaffController {
         : `Ya pagó por transferencia (${cop(order.totalCop)}). No cobrar`;
     try {
       await this.whatsapp.sendTemplate(courier, "domicilio_asignado", [
-        order.id,
+        String(order.number),
         order.customerName,
         `+${order.customerPhone}`,
         order.deliveryAddress,
@@ -92,7 +105,7 @@ export class StaffController {
       ]);
       return true;
     } catch (err) {
-      console.error(`Courier notification failed for #${order.id}:`, (err as Error).message);
+      console.error(`Courier notification failed for #${order.number}:`, (err as Error).message);
       return false;
     }
   }

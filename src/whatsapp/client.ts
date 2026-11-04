@@ -8,6 +8,8 @@ export interface WhatsAppClient {
   sendLocationRequest(to: string, bodyText: string): Promise<void>;
   /** Approved template: works outside the 24h window. buttonPayloads map to quick-reply buttons by index. */
   sendTemplate(to: string, name: string, bodyParams: string[], buttonPayloads?: string[]): Promise<void>;
+  /** Transcript of a voice note (made by Kapso), or null if not available. */
+  getTranscript(messageId: string): Promise<string | null>;
 }
 
 type SentMessage =
@@ -19,6 +21,11 @@ type SentMessage =
 
 export class FakeWhatsAppClient implements WhatsAppClient {
   public sent: SentMessage[] = [];
+  public transcripts = new Map<string, string>();
+
+  async getTranscript(messageId: string): Promise<string | null> {
+    return this.transcripts.get(messageId) ?? null;
+  }
 
   async sendText(to: string, text: string): Promise<void> {
     this.sent.push({ to, kind: "text", text });

@@ -26,6 +26,8 @@ export interface OrderDraft {
 
 export interface Order {
   id: string;
+  /** Short, human-friendly sequential number shown to customers and staff (#12). */
+  number: number;
   customerPhone: string;
   customerName: string;
   items: OrderItem[];

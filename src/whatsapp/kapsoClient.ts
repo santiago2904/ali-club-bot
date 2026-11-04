@@ -71,6 +71,21 @@ export class KapsoWhatsAppClient implements WhatsAppClient {
     } as any);
   }
 
+  async getTranscript(messageId: string): Promise<string | null> {
+    // Kapso transcribes voice notes asynchronously; give it a few seconds.
+    for (let attempt = 0; attempt < 6; attempt++) {
+      try {
+        const msg: any = await this.sdk.messages.get({ phoneNumberId: this.phoneNumberId, messageId });
+        const text = msg?.transcript?.text ?? msg?.kapso?.transcript?.text;
+        if (typeof text === "string" && text.trim()) return text.trim();
+      } catch {
+        // message may not be stored yet
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    return null;
+  }
+
   async downloadMedia(mediaId: string): Promise<{ bytes: Buffer; ext: string }> {
     const meta = await this.sdk.media.get({ mediaId, phoneNumberId: this.phoneNumberId });
     const data = await this.sdk.media.download({ mediaId, phoneNumberId: this.phoneNumberId, as: "arrayBuffer" });

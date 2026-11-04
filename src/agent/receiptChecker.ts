@@ -26,20 +26,30 @@ export function describeReceipt(r: ReceiptReading, expectedTotalCop: number): st
   return `Comprobante leído: ${parts.join(", ")} (${flag}). Verifica en el banco antes de aprobar.`;
 }
 
+/** The model sometimes writes placeholders like "UNKNOWN" instead of null. */
+export function cleanField(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return !t || /^(unknown|n\/?a|null|none|desconocido|no identificado|-)$/i.test(t) ? null : t;
+}
+
 const MEDIA_TYPES: Record<string, "image/jpeg" | "image/png" | "image/webp" | "image/gif"> = {
   jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif",
 };
 
 export class AnthropicReceiptChecker implements ReceiptChecker {
   private client: Anthropic;
-  constructor(apiKey: string, private model = "claude-sonnet-5") {
-    this.client = new Anthropic({ apiKey });
+  constructor(apiKey: string, private model = "claude-haiku-5-5") {
+    // Fail fast in a chat (the SDK default is 10 min); the SDK still retries 429/5xx twice.
+    this.client = new Anthropic({ apiKey, timeout: 30_000, maxRetries: 2 });
   }
 
   async read(image: Buffer, ext: string): Promise<ReceiptReading> {
-    const res = await this.client.messages.create({
+    // `as any`: the installed SDK (0.32) predates output_config typings.
+    const res: any = await this.client.messages.create({
       model: this.model,
       max_tokens: 512,
+      output_config: { effort: "low" },
       tool_choice: { type: "tool", name: "report_receipt" },
       tools: [{
         name: "report_receipt",
@@ -63,15 +73,15 @@ export class AnthropicReceiptChecker implements ReceiptChecker {
           { type: "text", text: "¿Esta imagen es un comprobante de pago? Extrae los datos si lo es." },
         ],
       }],
-    });
-    const block = res.content.find((b) => b.type === "tool_use");
+    } as any);
+    const block = res.content.find((b: any) => b.type === "tool_use");
     const input = (block?.type === "tool_use" ? block.input : {}) as any;
     return {
       isPaymentReceipt: Boolean(input.is_payment_receipt),
       amountCop: typeof input.amount_cop === "number" ? input.amount_cop : null,
-      bank: input.bank ?? null,
-      date: input.date ?? null,
-      reference: input.reference ?? null,
+      bank: cleanField(input.bank),
+      date: cleanField(input.date),
+      reference: cleanField(input.reference),
     };
   }
 }

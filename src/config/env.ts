@@ -6,7 +6,12 @@ const schema = z.object({
   KAPSO_API_KEY: z.string().min(1),
   WHATSAPP_PHONE_NUMBER_ID: z.string().min(1),
   WHATSAPP_VERIFY_TOKEN: z.string().min(1),
-  STAFF_CHAT_ID: z.string().min(1),
+  // Comma-separated staff numbers that receive and approve orders.
+  STAFF_CHAT_ID: z
+    .string()
+    .trim()
+    .min(1)
+    .transform((v) => v.split(",").map((n) => n.trim()).filter(Boolean)),
   COURIER_CHAT_ID: z.string().trim().min(1).optional(),
   PROOF_DIR: z.string().min(1),
   QR_IMAGE_PATH: z.string().min(1),

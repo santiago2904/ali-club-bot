@@ -24,7 +24,7 @@ import { APP_SECRET, WhatsAppSignatureGuard } from "./bot/whatsappSignature.guar
 const env = getEnv();
 
 const botConfig: BotConfig = {
-  staffChatId: env.STAFF_CHAT_ID,
+  staffChatIds: env.STAFF_CHAT_ID,
   courierChatId: env.COURIER_CHAT_ID,
   qrImagePath: env.QR_IMAGE_PATH,
   allowedSenders: env.ALLOWED_SENDERS,

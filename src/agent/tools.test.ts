@@ -12,7 +12,6 @@ function ctx(): ToolContext {
     store,
     orders: new OrderService(new MemoryOrderRepository()),
     whatsapp: new FakeWhatsAppClient(),
-    staffChatId: "staff-1",
     qrImagePath: "/qr.png",
   };
 }

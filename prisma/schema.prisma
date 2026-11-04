@@ -9,6 +9,7 @@ datasource db {
 
 model Order {
   id              String    @id @default(cuid())
+  number          Int       @unique @default(autoincrement())
   customerPhone   String
   customerName    String
   items           Json

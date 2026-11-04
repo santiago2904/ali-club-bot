@@ -20,6 +20,7 @@ export interface CreateOrderInput {
 export interface OrderRepository {
   create(input: CreateOrderInput): Promise<Order>;
   findById(id: string): Promise<Order | null>;
+  findByNumber(number: number): Promise<Order | null>;
   /** Atomically stores the proof AND moves the order to pending_review. */
   attachProof(id: string, proofImagePath: string, proofCheck: string | null): Promise<Order>;
   /**

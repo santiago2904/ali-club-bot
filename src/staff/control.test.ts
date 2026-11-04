@@ -14,10 +14,10 @@ function draft(): OrderDraft {
 
 describe("parseStaffCommand", () => {
   it("parses approve", () => {
-    expect(parseStaffCommand("aprobar #12")).toEqual({ action: "approve", orderId: "12" });
+    expect(parseStaffCommand("aprobar #12")).toEqual({ action: "approve", orderNumber: 12 });
   });
   it("parses reject with reason", () => {
-    expect(parseStaffCommand("rechazar #7 sin cobertura")).toEqual({ action: "reject", orderId: "7", reason: "sin cobertura" });
+    expect(parseStaffCommand("rechazar #7 sin cobertura")).toEqual({ action: "reject", orderNumber: 7, reason: "sin cobertura" });
   });
   it("returns null for non-commands", () => {
     expect(parseStaffCommand("hola equipo")).toBeNull();
@@ -32,7 +32,7 @@ describe("StaffController.handle", () => {
     const order = await orders.confirm("57300", draft(), "cash"); // pending_review
     const ctrl = new StaffController(orders, wa);
 
-    const handled = await ctrl.handle(`aprobar #${order.id}`, "cocina");
+    const handled = await ctrl.handle(`aprobar #${order.number}`, "cocina");
     expect(handled).toBe(true);
     expect((await repo.findById(order.id))?.status).toBe("approved");
     expect(wa.sent.some((m) => m.to === "57300" && m.kind === "text")).toBe(true);
@@ -45,7 +45,7 @@ describe("StaffController.handle", () => {
     const order = await orders.confirm("57300", draft(), "cash");
     const ctrl = new StaffController(orders, wa);
 
-    await ctrl.handle(`rechazar #${order.id} pago no recibido`, "cocina");
+    await ctrl.handle(`rechazar #${order.number} pago no recibido`, "cocina");
     expect((await repo.findById(order.id))?.status).toBe("rejected");
     const msg = wa.sent.find((m) => m.to === "57300");
     expect(msg && msg.kind === "text" && msg.text.includes("pago no recibido")).toBe(true);
@@ -58,14 +58,14 @@ describe("StaffController.handle", () => {
 });
 
 describe("StaffController buttons and courier", () => {
-  const config = { staffChatId: "staff-1", courierChatId: "courier-1", qrImagePath: "/qr.png", allowedSenders: "*" as const, now: () => new Date() };
+  const config = { staffChatIds: ["staff-1"], courierChatId: "courier-1", qrImagePath: "/qr.png", allowedSenders: "*" as const, now: () => new Date() };
 
   it("'approve' button approves, notifies the courier with the template, and confirms to staff", async () => {
     const repo = new MemoryOrderRepository();
     const orders = new OrderService(repo);
     const wa = new FakeWhatsAppClient();
     const order = await orders.confirm("57300", { ...draft(), deliveryLat: 6.25, deliveryLng: -75.62 }, "cash");
-    await new StaffController(orders, wa, config).handleButton(`approve:${order.id}`, "staff-1");
+    await new StaffController(orders, wa, config).handleButton(`approve:${order.number}`, "staff-1");
 
     expect((await repo.findById(order.id))?.status).toBe("approved");
     const tpl = wa.sent.find((m) => m.kind === "template");
@@ -83,7 +83,7 @@ describe("StaffController buttons and courier", () => {
     const wa = new FakeWhatsAppClient();
     const order = await orders.confirm("57300", draft(), "transfer");
     await orders.attachProof(order.id, "/p.jpg");
-    await new StaffController(orders, wa, config).handle(`aprobar #${order.id}`, "staff-1");
+    await new StaffController(orders, wa, config).handle(`aprobar #${order.number}`, "staff-1");
     const tpl = wa.sent.find((m) => m.kind === "template");
     expect(tpl?.kind === "template" && tpl.bodyParams.some((p) => p.includes("No cobrar"))).toBe(true);
   });
@@ -94,7 +94,7 @@ describe("StaffController buttons and courier", () => {
     const wa = new FakeWhatsAppClient();
     const order = await orders.confirm("57300", draft(), "transfer");
     await orders.attachProof(order.id, "/proofs/1.jpg", "Comprobante leído");
-    await new StaffController(orders, wa, config).handleButton(`proof:${order.id}`, "staff-1");
+    await new StaffController(orders, wa, config).handleButton(`proof:${order.number}`, "staff-1");
     expect(wa.sent.some((m) => m.to === "staff-1" && m.kind === "image" && m.imagePath === "/proofs/1.jpg")).toBe(true);
   });
 
@@ -102,7 +102,7 @@ describe("StaffController buttons and courier", () => {
     const orders = new OrderService(new MemoryOrderRepository());
     const wa = new FakeWhatsAppClient();
     const order = await orders.confirm("57300", draft(), "cash");
-    await new StaffController(orders, wa).handle(`aprobar #${order.id}`, "staff-1");
+    await new StaffController(orders, wa).handle(`aprobar #${order.number}`, "staff-1");
     expect(wa.sent.some((m) => m.kind === "template")).toBe(false);
   });
 });

@@ -6,7 +6,7 @@ function make(over: { verifyToken?: string; allowedSenders?: "*" | string[] } = 
   const orchestrator = { handleText: vi.fn(async () => []), handleImage: vi.fn(async () => {}) };
   const staff = { handle: vi.fn(async () => false) };
   const config: BotConfig = {
-    staffChatId: "staff-1",
+    staffChatIds: ["staff-1"],
     qrImagePath: "/qr.png",
     allowedSenders: over.allowedSenders ?? "*",
     now: () => new Date(),
@@ -52,7 +52,7 @@ describe("POST /webhook routing", () => {
   it("routes a customer text to the orchestrator", async () => {
     const { ctrl, orchestrator } = make();
     await ctrl.receive(textBody("57300", "m1", "hola"));
-    expect(orchestrator.handleText).toHaveBeenCalledWith("57300", "hola");
+    expect(orchestrator.handleText).toHaveBeenCalledWith("57300", "hola", undefined);
   });
 
   it("routes a staff-chat message to the staff controller", async () => {
@@ -78,12 +78,19 @@ describe("POST /webhook routing", () => {
   it("routes allowlisted customers to the orchestrator", async () => {
     const { ctrl, orchestrator } = make({ allowedSenders: ["57311"] });
     await ctrl.receive(textBody("57311", "m4", "hola"));
-    expect(orchestrator.handleText).toHaveBeenCalledWith("57311", "hola");
+    expect(orchestrator.handleText).toHaveBeenCalledWith("57311", "hola", undefined);
   });
 
   it("always routes staff even when not in the allowlist", async () => {
     const { ctrl, staff } = make({ allowedSenders: ["57311"] });
     await ctrl.receive(textBody("staff-1", "m5", "aprobar #3"));
     expect(staff.handle).toHaveBeenCalledWith("aprobar #3", "staff-1");
+  });
+
+  it("treats a staff number's non-command message as a normal customer chat", async () => {
+    const { ctrl, staff, orchestrator } = make({ allowedSenders: ["staff-1"] });
+    await ctrl.receive(textBody("staff-1", "m9", "quiero 8 alitas"));
+    expect(staff.handle).not.toHaveBeenCalled();
+    expect(orchestrator.handleText).toHaveBeenCalledWith("staff-1", "quiero 8 alitas", undefined);
   });
 });

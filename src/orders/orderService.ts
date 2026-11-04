@@ -73,6 +73,10 @@ export class OrderService {
       .slice(0, limit);
   }
 
+  getByNumber(number: number): Promise<Order | null> {
+    return this.repo.findByNumber(number);
+  }
+
   getById(orderId: string): Promise<Order | null> {
     return this.repo.findById(orderId);
   }
