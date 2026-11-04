@@ -23,15 +23,24 @@ describe("runTool", () => {
     expect(result).toContain("alitas");
   });
 
-  it("validate_zone reports coverage", async () => {
-    const { result } = await runTool("validate_zone", { neighborhood: "Laureles" }, ctx());
-    expect(result.toLowerCase()).toContain("cubre");
+  it("request_location sends a location request", async () => {
+    const c = ctx();
+    await runTool("request_location", {}, c);
+    expect((c.whatsapp as FakeWhatsAppClient).sent.some((m) => m.kind === "location_request")).toBe(true);
+  });
+
+  it("confirm_order requires a delivery location quote", async () => {
+    const c = ctx();
+    await runTool("add_item", { productId: "alitas_8", quantity: 1 }, c);
+    await runTool("set_customer_details", { name: "Ana", address: "Cra 70", neighborhood: "Laureles" }, c);
+    const { result } = await runTool("confirm_order", { paymentMethod: "cash" }, c);
+    expect(result).toContain("ubicación");
   });
 
   it("add_item adds a known product to the draft", async () => {
     const c = ctx();
-    await runTool("add_item", { productId: "wings_12", quantity: 2 }, c);
-    expect(c.session.draft.items[0]).toMatchObject({ productId: "wings_12", quantity: 2 });
+    await runTool("add_item", { productId: "alitas_8", quantity: 2 }, c);
+    expect(c.session.draft.items[0]).toMatchObject({ productId: "alitas_8", quantity: 2 });
   });
 
   it("add_item rejects an unknown product", async () => {
@@ -46,8 +55,9 @@ describe("runTool", () => {
 
   it("confirm_order (transfer) creates an order and reports its id", async () => {
     const c = ctx();
-    await runTool("add_item", { productId: "wings_12", quantity: 1 }, c);
+    await runTool("add_item", { productId: "alitas_8", quantity: 1 }, c);
     await runTool("set_customer_details", { name: "Ana", address: "Cra 70", neighborhood: "Laureles" }, c);
+    Object.assign(c.session.draft, { zone: "0.8 km", deliveryFeeCop: 3000 });
     const { result, confirmedOrderId } = await runTool("confirm_order", { paymentMethod: "transfer" }, c);
     expect(confirmedOrderId).toBeDefined();
     expect(result.toLowerCase()).toContain("transferencia");
@@ -62,10 +72,25 @@ describe("runTool", () => {
 
   it("confirm_order resets the draft so a second order does not reuse confirmed items", async () => {
     const c = ctx();
-    await runTool("add_item", { productId: "wings_12", quantity: 1 }, c);
+    await runTool("add_item", { productId: "alitas_8", quantity: 1 }, c);
     await runTool("set_customer_details", { name: "Ana", address: "Cra 70", neighborhood: "Laureles" }, c);
+    Object.assign(c.session.draft, { zone: "0.8 km", deliveryFeeCop: 3000 });
     await runTool("confirm_order", { paymentMethod: "cash" }, c);
     expect(c.session.draft.items).toEqual([]);
+  });
+
+  it("send_catalog sends the interactive catalog", async () => {
+    const c = ctx();
+    await runTool("send_catalog", {}, c);
+    const wa = c.whatsapp as FakeWhatsAppClient;
+    expect(wa.sent.some((m) => m.kind === "catalog" && m.to === "57300")).toBe(true);
+  });
+
+  it("send_catalog falls back to the text menu when sending fails", async () => {
+    const c = ctx();
+    (c.whatsapp as FakeWhatsAppClient).sendCatalog = async () => { throw new Error("no catalog"); };
+    const { result } = await runTool("send_catalog", {}, c);
+    expect(result).toContain("get_menu");
   });
 
   it("has no approval-capable tool (only human staff can approve)", () => {

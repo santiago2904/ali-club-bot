@@ -1,5 +1,4 @@
 import { getMenu, findProduct } from "../config/menu";
-import { validateZone } from "../config/zones";
 import type { OrderService } from "../orders/orderService";
 import type { Session, SessionStore } from "../sessions/sessionStore";
 import type { WhatsAppClient } from "../whatsapp/client";
@@ -22,12 +21,14 @@ export interface ToolDef {
 
 export const TOOL_DEFS: ToolDef[] = [
   { name: "get_menu", description: "Devuelve el menú con productos y precios.", input_schema: { type: "object", properties: {} } },
-  { name: "validate_zone", description: "Verifica si hay cobertura de domicilio en un barrio y el costo.", input_schema: { type: "object", properties: { neighborhood: { type: "string" } }, required: ["neighborhood"] } },
+  { name: "request_location", description: "Pide al cliente compartir su ubicación de WhatsApp para calcular el domicilio por distancia.", input_schema: { type: "object", properties: {} } },
   { name: "add_item", description: "Agrega un producto al pedido por su productId.", input_schema: { type: "object", properties: { productId: { type: "string" }, quantity: { type: "integer", minimum: 1 } }, required: ["productId", "quantity"] } },
   { name: "remove_item", description: "Quita un producto del pedido por su productId.", input_schema: { type: "object", properties: { productId: { type: "string" } }, required: ["productId"] } },
-  { name: "set_customer_details", description: "Guarda nombre, dirección y barrio del cliente.", input_schema: { type: "object", properties: { name: { type: "string" }, address: { type: "string" }, neighborhood: { type: "string" } }, required: ["name", "address", "neighborhood"] } },
+  { name: "set_customer_details", description: "Guarda el nombre del cliente y los detalles para encontrar la casa (dirección, apto/casa, referencias).", input_schema: { type: "object", properties: { name: { type: "string" }, address: { type: "string", description: "Dirección con apto/casa/torre y referencias para el domiciliario." } }, required: ["name", "address"] } },
   { name: "summarize_order", description: "Devuelve el resumen del pedido con totales.", input_schema: { type: "object", properties: {} } },
   { name: "confirm_order", description: "Confirma el pedido con el método de pago (transfer o cash).", input_schema: { type: "object", properties: { paymentMethod: { type: "string", enum: ["transfer", "cash"] } }, required: ["paymentMethod"] } },
+  { name: "send_catalog", description: "Envía al cliente el catálogo interactivo de WhatsApp para que arme su carrito.", input_schema: { type: "object", properties: {} } },
+  { name: "get_best_sellers", description: "Devuelve los productos más pedidos (datos reales de pedidos aprobados en los últimos 30 días).", input_schema: { type: "object", properties: {} } },
   { name: "send_qr", description: "Envía el código QR de pago por transferencia al cliente.", input_schema: { type: "object", properties: {} } },
 ];
 
@@ -48,13 +49,12 @@ export async function runTool(
       return { result: `Menú:\n${lines.join("\n")}` };
     }
 
-    case "validate_zone": {
-      const z = validateZone(String(input.neighborhood));
-      return {
-        result: z.covered
-          ? `Sí se cubre ${z.neighborhood}. Domicilio: ${cop(z.deliveryFeeCop)}.`
-          : `No se cubre ${z.neighborhood}. No hay cobertura de domicilio allí.`,
-      };
+    case "request_location": {
+      await ctx.whatsapp.sendLocationRequest(
+        ctx.session.phone,
+        "Para calcular el domicilio, compártenos tu ubicación con el botón de abajo 📍",
+      );
+      return { result: "Solicitud de ubicación enviada. Espera a que el cliente la comparta." };
     }
 
     case "add_item": {
@@ -77,12 +77,12 @@ export async function runTool(
     case "set_customer_details": {
       draft.customerName = String(input.name);
       draft.deliveryAddress = String(input.address);
-      const z = validateZone(String(input.neighborhood));
-      if (!z.covered) return { result: `No hay cobertura en ${z.neighborhood}. No se puede tomar el domicilio.` };
-      draft.zone = z.neighborhood;
-      draft.deliveryFeeCop = z.deliveryFeeCop;
       ctx.store.save(ctx.session);
-      return { result: `Datos guardados. Domicilio a ${z.neighborhood}: ${cop(z.deliveryFeeCop)}.` };
+      return {
+        result: draft.zone
+          ? `Datos guardados. Domicilio ya calculado (${draft.zone}): ${cop(draft.deliveryFeeCop)}.`
+          : "Datos guardados. Falta la ubicación para calcular el domicilio: usa request_location.",
+      };
     }
 
     case "summarize_order": {
@@ -108,7 +108,7 @@ export async function runTool(
       if (draft.items.length === 0) missing.push("productos");
       if (!draft.customerName) missing.push("nombre");
       if (!draft.deliveryAddress) missing.push("dirección");
-      if (!draft.zone) missing.push("barrio con cobertura");
+      if (!draft.zone) missing.push("ubicación con cobertura (request_location)");
       if (missing.length) return { result: `Falta información: ${missing.join(", ")}.` };
 
       const method = input.paymentMethod as PaymentMethod;
@@ -126,6 +126,24 @@ export async function runTool(
         result: `Pedido #${order.id} creado por ${total}. Pago en efectivo contra entrega. Queda pendiente de confirmación del local.`,
         confirmedOrderId: order.id,
       };
+    }
+
+    case "send_catalog": {
+      try {
+        await ctx.whatsapp.sendCatalog(ctx.session.phone, "Mira nuestro menú y arma tu pedido desde el catálogo 🍔🍗");
+        return { result: "Catálogo enviado. No repitas el menú en texto." };
+      } catch (err) {
+        console.error("send_catalog failed:", (err as Error).message);
+        return { result: "No se pudo enviar el catálogo. Muestra el menú en texto con get_menu." };
+      }
+    }
+
+    case "get_best_sellers": {
+      const top = await ctx.orders.bestSellers();
+      if (top.length === 0) {
+        return { result: "Aún no hay datos suficientes. NO digas que algún producto es el más pedido o el favorito." };
+      }
+      return { result: `Más pedidos (últimos 30 días):\n${top.map((t) => `- ${t.name}`).join("\n")}` };
     }
 
     case "send_qr": {

@@ -25,6 +25,8 @@ export class OrderService {
       items: draft.items,
       deliveryAddress: draft.deliveryAddress,
       zone: draft.zone,
+      deliveryLat: draft.deliveryLat ?? null,
+      deliveryLng: draft.deliveryLng ?? null,
       deliveryFeeCop: draft.deliveryFeeCop,
       subtotalCop,
       totalCop,
@@ -34,12 +36,12 @@ export class OrderService {
     return this.repo.create(input);
   }
 
-  async attachProof(orderId: string, proofImagePath: string): Promise<Order> {
+  async attachProof(orderId: string, proofImagePath: string, proofCheck: string | null = null): Promise<Order> {
     const order = await this.mustGet(orderId);
     if (!canTransition(order.status, "pending_review")) {
       throw new Error(`Cannot attach proof from ${order.status}`);
     }
-    return this.repo.attachProof(orderId, proofImagePath);
+    return this.repo.attachProof(orderId, proofImagePath, proofCheck);
   }
 
   async review(
@@ -54,6 +56,21 @@ export class OrderService {
     const updated = await this.repo.transition(orderId, order.status, decision, reviewedBy);
     if (!updated) throw new Error(`Order ${orderId} already reviewed`);
     return updated;
+  }
+
+  /**
+   * Top products by units in approved orders over the last `days`.
+   * Returns [] until there are at least `minOrders` approved orders, so the bot never claims popularity without data.
+   */
+  async bestSellers(days = 30, limit = 3, minOrders = 10): Promise<{ name: string; units: number }[]> {
+    const orders = await this.repo.findApprovedSince(new Date(Date.now() - days * 86_400_000));
+    if (orders.length < minOrders) return [];
+    const units = new Map<string, number>();
+    for (const o of orders) for (const i of o.items) units.set(i.name, (units.get(i.name) ?? 0) + i.quantity);
+    return [...units.entries()]
+      .map(([name, u]) => ({ name, units: u }))
+      .sort((a, b) => b.units - a.units)
+      .slice(0, limit);
   }
 
   getById(orderId: string): Promise<Order | null> {

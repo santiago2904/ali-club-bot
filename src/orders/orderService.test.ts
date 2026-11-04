@@ -73,3 +73,37 @@ describe("OrderService.attachProof and review", () => {
     expect(rejected[0].reason.message).toMatch(/already reviewed/);
   });
 });
+
+describe("OrderService.bestSellers", () => {
+  const draft = (name: string, quantity: number) => ({
+    items: [{ productId: name, name, quantity, unitPriceCop: 1000 }],
+    customerName: "Ana", deliveryAddress: "Cra 1", zone: "1 km", deliveryFeeCop: 0,
+  });
+
+  async function approvedOrders(svc: OrderService, list: [string, number][]) {
+    for (const [name, qty] of list) {
+      const o = await svc.confirm("57300", draft(name, qty), "cash");
+      await svc.review(o.id, "approved", "staff");
+    }
+  }
+
+  it("returns nothing until there are enough approved orders", async () => {
+    const svc = new OrderService(new MemoryOrderRepository());
+    await approvedOrders(svc, [["A", 5]]);
+    expect(await svc.bestSellers()).toEqual([]);
+  });
+
+  it("ranks products by units across approved orders", async () => {
+    const svc = new OrderService(new MemoryOrderRepository());
+    await approvedOrders(svc, [["A", 1], ["B", 3], ["C", 2], ["B", 1], ["A", 1], ["A", 1], ["C", 1], ["D", 1], ["A", 1], ["B", 1]]);
+    expect(await svc.bestSellers()).toEqual([
+      { name: "B", units: 5 }, { name: "A", units: 4 }, { name: "C", units: 3 },
+    ]);
+  });
+
+  it("ignores orders that were not approved", async () => {
+    const svc = new OrderService(new MemoryOrderRepository());
+    for (let i = 0; i < 12; i++) await svc.confirm("57300", draft("X", 1), "cash");
+    expect(await svc.bestSellers()).toEqual([]);
+  });
+});

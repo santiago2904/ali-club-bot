@@ -11,6 +11,7 @@ export class MemoryOrderRepository implements OrderRepository {
       id,
       ...input,
       proofImagePath: null,
+      proofCheck: null,
       createdAt: new Date(),
       reviewedBy: null,
       reviewedAt: null,
@@ -23,9 +24,9 @@ export class MemoryOrderRepository implements OrderRepository {
     return this.orders.get(id) ?? null;
   }
 
-  async attachProof(id: string, proofImagePath: string): Promise<Order> {
+  async attachProof(id: string, proofImagePath: string, proofCheck: string | null): Promise<Order> {
     const order = this.mustGet(id);
-    const updated: Order = { ...order, proofImagePath, status: "pending_review" };
+    const updated: Order = { ...order, proofImagePath, proofCheck, status: "pending_review" };
     this.orders.set(id, updated);
     return updated;
   }
@@ -41,6 +42,10 @@ export class MemoryOrderRepository implements OrderRepository {
     const updated: Order = { ...order, status: to, reviewedBy, reviewedAt: new Date() };
     this.orders.set(id, updated);
     return updated;
+  }
+
+  async findApprovedSince(since: Date): Promise<Order[]> {
+    return [...this.orders.values()].filter((o) => o.status === "approved" && o.createdAt >= since);
   }
 
   private mustGet(id: string): Order {

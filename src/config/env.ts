@@ -7,6 +7,7 @@ const schema = z.object({
   WHATSAPP_PHONE_NUMBER_ID: z.string().min(1),
   WHATSAPP_VERIFY_TOKEN: z.string().min(1),
   STAFF_CHAT_ID: z.string().min(1),
+  COURIER_CHAT_ID: z.string().trim().min(1).optional(),
   PROOF_DIR: z.string().min(1),
   QR_IMAGE_PATH: z.string().min(1),
   PORT: z.coerce.number().int().positive(),

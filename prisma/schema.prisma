@@ -14,11 +14,14 @@ model Order {
   items           Json
   deliveryAddress String
   zone            String
+  deliveryLat     Float?
+  deliveryLng     Float?
   deliveryFeeCop  Int
   subtotalCop     Int
   totalCop        Int
   paymentMethod   String
   proofImagePath  String?
+  proofCheck      String?
   status          String
   createdAt       DateTime  @default(now())
   reviewedBy      String?

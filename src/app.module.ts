@@ -11,6 +11,7 @@ import { WHATSAPP_CLIENT } from "./whatsapp/client";
 import { KapsoWhatsAppClient } from "./whatsapp/kapsoClient";
 import { LLM_CLIENT } from "./agent/llmClient";
 import { AnthropicLlmClient } from "./agent/anthropicLlmClient";
+import { AnthropicReceiptChecker, RECEIPT_CHECKER } from "./agent/receiptChecker";
 import { Orchestrator } from "./agent/orchestrator";
 import { StaffController } from "./staff/control";
 import { BOT_CONFIG, type BotConfig } from "./bot/botConfig";
@@ -21,6 +22,7 @@ const env = getEnv();
 
 const botConfig: BotConfig = {
   staffChatId: env.STAFF_CHAT_ID,
+  courierChatId: env.COURIER_CHAT_ID,
   qrImagePath: env.QR_IMAGE_PATH,
   allowedSenders: env.ALLOWED_SENDERS,
   now: () => new Date(),
@@ -38,6 +40,7 @@ const botConfig: BotConfig = {
     { provide: PROOF_STORAGE, useFactory: () => new LocalProofStorage(env.PROOF_DIR) },
     { provide: WHATSAPP_CLIENT, useFactory: () => new KapsoWhatsAppClient(env.KAPSO_API_KEY, env.WHATSAPP_PHONE_NUMBER_ID) },
     { provide: LLM_CLIENT, useFactory: () => new AnthropicLlmClient(env.ANTHROPIC_API_KEY) },
+    { provide: RECEIPT_CHECKER, useFactory: () => new AnthropicReceiptChecker(env.ANTHROPIC_API_KEY) },
     { provide: BOT_CONFIG, useValue: botConfig },
     { provide: VERIFY_TOKEN, useValue: env.WHATSAPP_VERIFY_TOKEN },
     { provide: APP_SECRET, useFactory: () => env.KAPSO_WEBHOOK_SECRET },

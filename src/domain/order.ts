@@ -19,6 +19,8 @@ export interface OrderDraft {
   customerName?: string;
   deliveryAddress?: string;
   zone?: string;
+  deliveryLat?: number;
+  deliveryLng?: number;
   deliveryFeeCop: number;
 }
 
@@ -29,11 +31,15 @@ export interface Order {
   items: OrderItem[];
   deliveryAddress: string;
   zone: string;
+  deliveryLat: number | null;
+  deliveryLng: number | null;
   deliveryFeeCop: number;
   subtotalCop: number;
   totalCop: number;
   paymentMethod: PaymentMethod;
   proofImagePath: string | null;
+  /** Automatic reading of the payment proof (never an approval). */
+  proofCheck: string | null;
   status: OrderStatus;
   createdAt: Date;
   reviewedBy: string | null;
@@ -46,6 +52,12 @@ export function calcSubtotalCop(items: OrderItem[]): number {
 
 export function calcTotalCop(subtotalCop: number, deliveryFeeCop: number): number {
   return subtotalCop + deliveryFeeCop;
+}
+
+export function mapsLink(order: Pick<Order, "deliveryLat" | "deliveryLng">): string {
+  return order.deliveryLat != null && order.deliveryLng != null
+    ? `https://maps.google.com/?q=${order.deliveryLat},${order.deliveryLng}`
+    : "Sin ubicación compartida";
 }
 
 export function emptyDraft(): OrderDraft {

@@ -5,8 +5,8 @@ import type { CreateOrderInput, OrderRepository } from "./orderRepository";
 
 type Row = {
   id: string; customerPhone: string; customerName: string; items: unknown;
-  deliveryAddress: string; zone: string; deliveryFeeCop: number; subtotalCop: number;
-  totalCop: number; paymentMethod: string; proofImagePath: string | null; status: string;
+  deliveryAddress: string; zone: string; deliveryLat: number | null; deliveryLng: number | null; deliveryFeeCop: number; subtotalCop: number;
+  totalCop: number; paymentMethod: string; proofImagePath: string | null; proofCheck: string | null; status: string;
   createdAt: Date; reviewedBy: string | null; reviewedAt: Date | null;
 };
 
@@ -18,11 +18,14 @@ function toOrder(row: Row): Order {
     items: row.items as OrderItem[],
     deliveryAddress: row.deliveryAddress,
     zone: row.zone,
+    deliveryLat: row.deliveryLat,
+    deliveryLng: row.deliveryLng,
     deliveryFeeCop: row.deliveryFeeCop,
     subtotalCop: row.subtotalCop,
     totalCop: row.totalCop,
     paymentMethod: row.paymentMethod as PaymentMethod,
     proofImagePath: row.proofImagePath,
+    proofCheck: row.proofCheck,
     status: row.status as OrderStatus,
     createdAt: row.createdAt,
     reviewedBy: row.reviewedBy,
@@ -46,12 +49,17 @@ export class PrismaOrderRepository implements OrderRepository {
     return row ? toOrder(row as Row) : null;
   }
 
-  async attachProof(id: string, proofImagePath: string): Promise<Order> {
+  async attachProof(id: string, proofImagePath: string, proofCheck: string | null): Promise<Order> {
     const row = await this.prisma.order.update({
       where: { id },
-      data: { proofImagePath, status: "pending_review" },
+      data: { proofImagePath, proofCheck, status: "pending_review" },
     });
     return toOrder(row as Row);
+  }
+
+  async findApprovedSince(since: Date): Promise<Order[]> {
+    const rows = await this.prisma.order.findMany({ where: { status: "approved", createdAt: { gte: since } } });
+    return rows.map((r) => toOrder(r as Row));
   }
 
   async transition(

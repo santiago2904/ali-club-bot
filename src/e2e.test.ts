@@ -20,6 +20,10 @@ class ScriptedLlm implements LlmClient {
 const textBody = (from: string, id: string, body: string) => ({
   entry: [{ changes: [{ value: { messages: [{ from, id, type: "text", text: { body } }] } }] }],
 });
+// ~0.8 km from the store → covered
+const locationBody = (from: string, id: string) => ({
+  entry: [{ changes: [{ value: { messages: [{ from, id, type: "location", location: { latitude: 6.2564, longitude: -75.621668 } }] } }] }],
+});
 const imageBody = (from: string, id: string, mediaId: string) => ({
   entry: [{ changes: [{ value: { messages: [{ from, id, type: "image", image: { id: mediaId } }] } }] }],
 });
@@ -36,8 +40,10 @@ describe("E2E happy path (transfer)", () => {
     };
 
     const llm = new ScriptedLlm([
-      { text: "", toolUses: [{ id: "1", name: "add_item", input: { productId: "wings_12", quantity: 1 } }], stopReason: "tool_use" },
+      { text: "", toolUses: [{ id: "1", name: "add_item", input: { productId: "alitas_8", quantity: 1 } }], stopReason: "tool_use" },
       { text: "", toolUses: [{ id: "2", name: "set_customer_details", input: { name: "Ana", address: "Cra 70", neighborhood: "Laureles" } }], stopReason: "tool_use" },
+      { text: "", toolUses: [{ id: "2b", name: "request_location", input: {} }], stopReason: "tool_use" },
+      { text: "Compárteme tu ubicación 📍", toolUses: [], stopReason: "end" },
       { text: "", toolUses: [{ id: "3", name: "confirm_order", input: { paymentMethod: "transfer" } }], stopReason: "tool_use" },
       { text: "", toolUses: [{ id: "4", name: "send_qr", input: {} }], stopReason: "tool_use" },
       { text: "Listo Ana, escanea el QR y envíame el comprobante. 🍗", toolUses: [], stopReason: "end" },
@@ -49,7 +55,9 @@ describe("E2E happy path (transfer)", () => {
     const staff = new StaffController(orders, wa);
     const ctrl = new WebhookController(orchestrator, staff, config, "verify-me");
 
-    await ctrl.receive(textBody("57300", "c1", "Quiero 12 alitas para Laureles, soy Ana, Cra 70, pago por transferencia"));
+    await ctrl.receive(textBody("57300", "c1", "Quiero 8 alitas, soy Ana, Cra 70, pago por transferencia"));
+    expect(wa.sent.some((m) => m.kind === "location_request")).toBe(true);
+    await ctrl.receive(locationBody("57300", "c1b"));
     const created = await repo.findById("1");
     expect(created?.status).toBe("awaiting_payment");
     expect(wa.sent.some((m) => m.kind === "image" && m.imagePath === "/qr.png")).toBe(true);
@@ -76,8 +84,10 @@ describe("E2E happy path (cash)", () => {
     };
 
     const llm = new ScriptedLlm([
-      { text: "", toolUses: [{ id: "1", name: "add_item", input: { productId: "wings_12", quantity: 1 } }], stopReason: "tool_use" },
+      { text: "", toolUses: [{ id: "1", name: "add_item", input: { productId: "alitas_8", quantity: 1 } }], stopReason: "tool_use" },
       { text: "", toolUses: [{ id: "2", name: "set_customer_details", input: { name: "Ana", address: "Cra 70", neighborhood: "Laureles" } }], stopReason: "tool_use" },
+      { text: "", toolUses: [{ id: "2b", name: "request_location", input: {} }], stopReason: "tool_use" },
+      { text: "Compárteme tu ubicación 📍", toolUses: [], stopReason: "end" },
       { text: "", toolUses: [{ id: "3", name: "confirm_order", input: { paymentMethod: "cash" } }], stopReason: "tool_use" },
       { text: "Listo Ana, pago en efectivo contra entrega. 🍗", toolUses: [], stopReason: "end" },
     ]);
@@ -88,7 +98,8 @@ describe("E2E happy path (cash)", () => {
     const staff = new StaffController(orders, wa);
     const ctrl = new WebhookController(orchestrator, staff, config, "verify-me");
 
-    await ctrl.receive(textBody("57300", "c1", "Quiero 12 alitas para Laureles, soy Ana, Cra 70, pago en efectivo"));
+    await ctrl.receive(textBody("57300", "c1", "Quiero 8 alitas, soy Ana, Cra 70, pago en efectivo"));
+    await ctrl.receive(locationBody("57300", "c1b"));
 
     const created = await repo.findById("1");
     expect(created?.status).toBe("pending_review");

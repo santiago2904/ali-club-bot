@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { WhatsAppClient as KapsoSdkClient } from "@kapso/whatsapp-cloud-api";
 import type { WhatsAppClient } from "./client";
+import { CATALOG_THUMBNAIL_RETAILER_ID } from "../config/menu";
 
 const KAPSO_BASE_URL = "https://api.kapso.ai/meta/whatsapp";
 
@@ -24,6 +25,50 @@ export class KapsoWhatsAppClient implements WhatsAppClient {
       fileName: imagePath.split("/").pop(),
     });
     await this.sdk.messages.sendImage({ phoneNumberId: this.phoneNumberId, to, image: { id, caption } });
+  }
+
+  async sendCatalog(to: string, bodyText: string): Promise<void> {
+    await this.sdk.messages.sendInteractiveCatalogMessage({
+      phoneNumberId: this.phoneNumberId,
+      to,
+      bodyText,
+      parameters: { thumbnailProductRetailerId: CATALOG_THUMBNAIL_RETAILER_ID },
+    });
+  }
+
+  async sendLocationRequest(to: string, bodyText: string): Promise<void> {
+    // The SDK's sendInteractiveLocationRequest adds parameters Meta rejects; send the raw shape instead.
+    await this.sdk.messages.sendInteractiveRaw({
+      phoneNumberId: this.phoneNumberId,
+      to,
+      interactive: { type: "location_request_message", body: { text: bodyText }, action: { name: "send_location" } },
+    } as any);
+  }
+
+  async sendTemplate(to: string, name: string, bodyParams: string[], buttonPayloads: string[] = []): Promise<void> {
+    // Template variables cannot contain newlines/tabs or 4+ consecutive spaces.
+    const clean = (v: string) => v.replace(/[\n\t]+/g, " ").replace(/ {4,}/g, " ").trim() || "-";
+    await this.sdk.messages.sendRaw({
+      phoneNumberId: this.phoneNumberId,
+      payload: {
+        messaging_product: "whatsapp",
+        to,
+        type: "template",
+        template: {
+          name,
+          language: { code: "es" },
+          components: [
+            { type: "body", parameters: bodyParams.map((text) => ({ type: "text", text: clean(text) })) },
+            ...buttonPayloads.map((payload, index) => ({
+              type: "button",
+              sub_type: "quick_reply",
+              index: String(index),
+              parameters: [{ type: "payload", payload }],
+            })),
+          ],
+        },
+      },
+    } as any);
   }
 
   async downloadMedia(mediaId: string): Promise<{ bytes: Buffer; ext: string }> {

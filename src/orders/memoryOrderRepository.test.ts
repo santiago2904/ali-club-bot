@@ -8,6 +8,8 @@ const input: CreateOrderInput = {
   items: [{ productId: "wings_12", name: "12 alitas BBQ", quantity: 1, unitPriceCop: 32000 }],
   deliveryAddress: "Cra 70 # 1-2",
   zone: "laureles",
+  deliveryLat: null,
+  deliveryLng: null,
   deliveryFeeCop: 5000,
   subtotalCop: 32000,
   totalCop: 37000,
@@ -27,7 +29,7 @@ describe("MemoryOrderRepository", () => {
   it("attaches proof and moves to pending_review, then transitions to approved", async () => {
     const repo = new MemoryOrderRepository();
     await repo.create(input);
-    const withProof = await repo.attachProof("1", "/proofs/1.jpg");
+    const withProof = await repo.attachProof("1", "/proofs/1.jpg", "Bancolombia $37.000");
     expect(withProof.status).toBe("pending_review");
     expect(withProof.proofImagePath).toBe("/proofs/1.jpg");
 

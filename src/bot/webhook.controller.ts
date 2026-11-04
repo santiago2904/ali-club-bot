@@ -45,6 +45,7 @@ export class WebhookController {
       try {
         if (msg.from === this.config.staffChatId) {
           if (msg.kind === "text") await this.staff.handle(msg.text, msg.from);
+          else if (msg.kind === "button") await this.staff.handleButton(msg.payload, msg.from);
           continue;
         }
         if (this.config.allowedSenders !== "*" && !this.config.allowedSenders.includes(msg.from)) {
@@ -52,7 +53,9 @@ export class WebhookController {
           continue;
         }
         if (msg.kind === "text") await this.orchestrator.handleText(msg.from, msg.text);
-        else await this.orchestrator.handleImage(msg.from, msg.mediaId);
+        else if (msg.kind === "order") await this.orchestrator.handleOrder(msg.from, msg.items);
+        else if (msg.kind === "location") await this.orchestrator.handleLocation(msg.from, msg.lat, msg.lng);
+        else if (msg.kind === "image") await this.orchestrator.handleImage(msg.from, msg.mediaId);
       } catch (err) {
         this.logger.error(`Failed to process message ${msg.messageId}`, err as Error);
       }
