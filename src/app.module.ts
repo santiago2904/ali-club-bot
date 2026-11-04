@@ -4,7 +4,10 @@ import { getEnv } from "./config/env";
 import { ORDER_REPOSITORY } from "./orders/orderRepository";
 import { PrismaOrderRepository } from "./orders/prismaOrderRepository";
 import { OrderService } from "./orders/orderService";
-import { SESSION_STORE, MemorySessionStore } from "./sessions/sessionStore";
+import { SESSION_STORE } from "./sessions/sessionStore";
+import { PrismaSessionStore } from "./sessions/prismaSessionStore";
+import { CLOSED_HOURS_CONTACTS, PrismaClosedHoursContacts } from "./sessions/closedHoursContacts";
+import { ReopenNotifier } from "./bot/reopenNotifier";
 import { PROOF_STORAGE } from "./storage/proofStorage";
 import { LocalProofStorage } from "./storage/localProofStorage";
 import { WHATSAPP_CLIENT } from "./whatsapp/client";
@@ -36,7 +39,9 @@ const botConfig: BotConfig = {
     StaffController,
     { provide: PrismaClient, useFactory: () => new PrismaClient() },
     { provide: ORDER_REPOSITORY, useClass: PrismaOrderRepository },
-    { provide: SESSION_STORE, useClass: MemorySessionStore },
+    { provide: SESSION_STORE, useFactory: (prisma: PrismaClient) => new PrismaSessionStore(prisma), inject: [PrismaClient] },
+    { provide: CLOSED_HOURS_CONTACTS, useFactory: (prisma: PrismaClient) => new PrismaClosedHoursContacts(prisma), inject: [PrismaClient] },
+    ReopenNotifier,
     { provide: PROOF_STORAGE, useFactory: () => new LocalProofStorage(env.PROOF_DIR) },
     { provide: WHATSAPP_CLIENT, useFactory: () => new KapsoWhatsAppClient(env.KAPSO_API_KEY, env.WHATSAPP_PHONE_NUMBER_ID) },
     { provide: LLM_CLIENT, useFactory: () => new AnthropicLlmClient(env.ANTHROPIC_API_KEY) },

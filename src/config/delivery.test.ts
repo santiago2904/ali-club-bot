@@ -9,17 +9,17 @@ describe("delivery", () => {
 
   it("quotes the first band for a nearby address", () => {
     const q = quoteDelivery({ lat: STORE_LOCATION.lat + 0.005, lng: STORE_LOCATION.lng });
-    expect(q).toEqual({ covered: true, km: 0.8, feeCop: 3000 });
+    expect(q).toEqual({ covered: true, km: 0.8, feeCop: 4000 });
   });
 
   it("applies the road factor before picking a band", () => {
-    // ~2.2 km straight line → ~3.1 km by road → second band
+    // ~2.2 km straight line → ~3.1 km by road → $7.000 band
     const q = quoteDelivery({ lat: STORE_LOCATION.lat + 0.02, lng: STORE_LOCATION.lng });
-    expect(q).toMatchObject({ covered: true, feeCop: 5000 });
+    expect(q).toMatchObject({ covered: true, feeCop: 7000 });
   });
 
   it("rejects addresses beyond the last band", () => {
-    // ~El Poblado, far from San Javier
+    // ~El Poblado, far from San Javier (Laureles is also out per the business)
     const q = quoteDelivery({ lat: 6.2087, lng: -75.5674 });
     expect(q.covered).toBe(false);
   });

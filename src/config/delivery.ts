@@ -4,11 +4,15 @@ export const STORE_LOCATION = { lat: 6.2514348, lng: -75.621668 };
 // Straight-line distance underestimates real routes (hills, one-ways); scale it up.
 const ROAD_FACTOR = 1.4;
 
-// Placeholder tariffs — replace with the business's real ranges.
+// Bands fitted to fees observed in the business's chats (Comuna 13: $4.000–$10.000;
+// Laureles out of coverage). Distances are road-adjusted. Hills still cost more than
+// distance suggests; staff reviews every order before approving.
 const FEE_BANDS: { maxKm: number; feeCop: number }[] = [
-  { maxKm: 2, feeCop: 3000 },
-  { maxKm: 4, feeCop: 5000 },
-  { maxKm: 6, feeCop: 7000 },
+  { maxKm: 1.5, feeCop: 4000 },
+  { maxKm: 2.5, feeCop: 6000 },
+  { maxKm: 3.5, feeCop: 7000 },
+  { maxKm: 4.5, feeCop: 9000 },
+  { maxKm: 5, feeCop: 10000 },
 ];
 
 export type DeliveryQuote =

@@ -16,6 +16,8 @@ export interface Session {
 }
 
 export interface SessionStore {
+  /** Make the session available to get(); persistent stores read it from the DB here. */
+  load(phone: string): Promise<void>;
   get(phone: string): Session;
   reset(phone: string): void;
   save(session: Session): void;
@@ -23,6 +25,8 @@ export interface SessionStore {
 
 export class MemorySessionStore implements SessionStore {
   private sessions = new Map<string, Session>();
+
+  async load(_phone: string): Promise<void> {}
 
   get(phone: string): Session {
     const existing = this.sessions.get(phone);

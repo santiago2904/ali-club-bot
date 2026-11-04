@@ -27,3 +27,16 @@ model Order {
   reviewedBy      String?
   reviewedAt      DateTime?
 }
+
+model Conversation {
+  phone       String   @id
+  history     Json
+  draft       Json
+  lastOrderId String?
+  updatedAt   DateTime
+}
+
+model ClosedHoursContact {
+  phone         String   @id
+  lastMessageAt DateTime
+}

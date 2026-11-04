@@ -121,7 +121,7 @@ describe("Orchestrator.handleLocation", () => {
   it("quotes delivery by distance and stores it on the draft", async () => {
     const { orch, store } = build(new ScriptedLlm([reply]));
     await orch.handleLocation("57300", 6.2564, -75.621668);
-    expect(store.get("57300").draft).toMatchObject({ zone: "0.8 km", deliveryFeeCop: 3000 });
+    expect(store.get("57300").draft).toMatchObject({ zone: "0.8 km", deliveryFeeCop: 4000 });
   });
 
   it("clears the delivery quote when the location is out of coverage", async () => {
@@ -212,5 +212,25 @@ describe("Orchestrator staff alert fallback", () => {
     );
     await orch.notifyStaffPendingReview(order);
     expect(whatsapp.sent.some((m) => m.to === "staff-1" && m.kind === "text" && m.text.includes(`aprobar #${order.id}`))).toBe(true);
+  });
+});
+
+describe("Orchestrator closed-hours contacts", () => {
+  it("remembers who wrote while closed, and forgets them once they write while open", async () => {
+    const { MemoryClosedHoursContacts } = await import("../sessions/closedHoursContacts");
+    const contacts = new MemoryClosedHoursContacts();
+    let now = new Date(2026, 6, 9, 4, 0);
+    const config: BotConfig = { allowedSenders: "*", staffChatId: "staff-1", qrImagePath: "/qr.png", now: () => now };
+    const orch = new Orchestrator(
+      new ScriptedLlm([{ text: "¡Hola!", toolUses: [], stopReason: "end" }]),
+      new MemorySessionStore(), new OrderService(new MemoryOrderRepository()), new FakeWhatsAppClient(),
+      new MemoryProofStorage(), config, undefined, contacts,
+    );
+    const out = await orch.handleText("57300", "hola");
+    expect(out.join(" ")).toContain("Te escribimos apenas abramos");
+
+    now = new Date(2026, 6, 9, 19, 0);
+    await orch.handleText("57300", "ya abrieron?");
+    expect(await contacts.drain()).toEqual([]);
   });
 });

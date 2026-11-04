@@ -7,6 +7,7 @@ import { PROOF_STORAGE, type ProofStorage } from "../storage/proofStorage";
 import { BOT_CONFIG, type BotConfig } from "../bot/botConfig";
 import { mapsLink, type Order } from "../domain/order";
 import { RECEIPT_CHECKER, describeReceipt, type ReceiptChecker } from "./receiptChecker";
+import { CLOSED_HOURS_CONTACTS, type ClosedHoursContacts } from "../sessions/closedHoursContacts";
 import { buildSystemPrompt } from "./prompt";
 import { TOOL_DEFS, runTool, type ToolContext } from "./tools";
 import { isOpen, hoursText } from "../config/businessHours";
@@ -26,15 +27,19 @@ export class Orchestrator {
     @Inject(PROOF_STORAGE) private storage: ProofStorage,
     @Inject(BOT_CONFIG) private config: BotConfig,
     @Optional() @Inject(RECEIPT_CHECKER) private receipts?: ReceiptChecker,
+    @Optional() @Inject(CLOSED_HOURS_CONTACTS) private closedContacts?: ClosedHoursContacts,
   ) {}
 
   async handleText(phone: string, text: string): Promise<string[]> {
     if (!isOpen(this.config.now())) {
-      const msg = `¡Hola! En este momento estamos cerrados. ${hoursText()} Escríbenos en ese horario y con gusto te tomamos el pedido. 🍗`;
+      const msg = `¡Hola! En este momento estamos cerrados. ${hoursText()} Te escribimos apenas abramos. 🍗`;
+      await this.closedContacts?.remember(phone, this.config.now());
       await this.whatsapp.sendText(phone, msg);
       return [msg];
     }
 
+    await this.closedContacts?.forget(phone);
+    await this.store.load(phone);
     const session = this.store.get(phone);
     session.history.push({ role: "user", content: [{ type: "text", text }] });
 
@@ -97,6 +102,7 @@ export class Orchestrator {
   async handleOrder(phone: string, items: CatalogOrderItem[]): Promise<string[]> {
     if (!isOpen(this.config.now())) return this.handleText(phone, "");
 
+    await this.store.load(phone);
     const session = this.store.get(phone);
     const lines: string[] = [];
     for (const item of items) {
@@ -116,6 +122,7 @@ export class Orchestrator {
   async handleLocation(phone: string, lat: number, lng: number): Promise<string[]> {
     if (!isOpen(this.config.now())) return this.handleText(phone, "");
 
+    await this.store.load(phone);
     const session = this.store.get(phone);
     const quote = quoteDelivery({ lat, lng });
     let note: string;
@@ -135,6 +142,7 @@ export class Orchestrator {
   }
 
   async handleImage(phone: string, mediaId: string): Promise<void> {
+    await this.store.load(phone);
     const session = this.store.get(phone);
     const orderId = session.lastOrderId;
     if (!orderId) {
